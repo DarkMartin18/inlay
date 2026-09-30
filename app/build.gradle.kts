@@ -9,7 +9,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.gridime"
+        applicationId = "io.github.dakingeman.gridkeyboard"
         minSdk = 29
         targetSdk = 37
         versionCode = 1
