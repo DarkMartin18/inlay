@@ -14,6 +14,25 @@ I'm sharing it to give something back to the community. There's no catch and not
 
 Since I can't read the code myself, I can't promise it's flawless, and it has only been tested on one device. If something goes wrong on yours, please open an issue and tell me what happened. If you can read code, improvements are very welcome.
 
+![Typing a sentence with the D-pad and buttons](docs/images/demo.gif)
+
+*A real screen recording from my AYN Odin 2 Portal: typing with the D-pad and A, Y for space, RT for a capital letter and LT for numbers and symbols.*
+
+## Screenshots
+
+All of these are real screenshots from my Odin 2 Portal.
+
+| | |
+|---|---|
+| ![Letters](docs/images/letters.png) | ![Symbols](docs/images/symbols.png) |
+| **Letters.** The highlight follows the D-pad. Small badges show which button does what. | **Symbols.** Press LT to flip between letters and symbols. |
+| ![Holding RT](docs/images/hold-rt.png) | ![Select mode](docs/images/select-mode.png) |
+| **Hold RT.** Hints appear for jumping words, one capital letter and undo. | **Select mode.** Press Select, then LB / RB to extend. Press it twice to select everything. |
+| ![Clipboard history](docs/images/clipboard.png) | ![Settings, Look](docs/images/settings-look.png) |
+| **Clipboard history.** Your recent copies, one button away. | **Settings, Look.** 16 highlight colours plus any custom colour. |
+| ![Settings, Sound and haptics](docs/images/settings-sound.png) | ![Settings with keyboard preview](docs/images/settings-preview.png) |
+| **Settings, Sound and haptics.** Vibration strength, sound packs and volume. | **Live preview.** Press Y in Settings to try your changes on the keyboard right away. |
+
 ---
 
 ## Features
