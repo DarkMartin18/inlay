@@ -6,6 +6,14 @@ Move with the D-pad or stick, press A to type, and never reach for the touchscre
 
 Free, open source, no ads, no tracking, no internet permission.
 
+## Who made this
+
+I'm Emre, and I don't write code. I want to say that plainly: every line of this app was written by Claude, Anthropic's AI. My part was the idea, deciding how it should look, feel and sound, and testing it on my AYN Odin 2 Portal, over and over, until it felt right. The sounds were made by Claude from scratch too, modelled on button sounds I picked out.
+
+I'm sharing it to give something back to the community. There's no catch and nothing is for sale.
+
+Since I can't read the code myself, I can't promise it's flawless, and it has only been tested on one device. If something goes wrong on yours, please open an issue and tell me what happened. If you can read code, improvements are very welcome.
+
 ---
 
 ## Features
@@ -47,7 +55,6 @@ Open the project in Android Studio and press **Run**. No extra libraries are nee
 
 - Fonts: [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next) and [Inter](https://github.com/rsms/inter), both under the SIL Open Font Licence (see `licenses/`).
 - All sounds were made for this project from scratch (the scripts that made them are in `tools/`).
-- Designed by Emre, built together with Claude.
 
 ## Licence
 
