@@ -8,6 +8,14 @@ Move with the D-pad or stick, press A to type, and never reach for the touchscre
 
 Free, open source, no ads, no tracking, no internet permission.
 
+[![Latest release](https://img.shields.io/github/v/release/dakingeman/inlay?color=72D6E8&labelColor=0B0B0E)](../../releases/latest) [![Licence](https://img.shields.io/github/license/dakingeman/inlay?color=72D6E8&labelColor=0B0B0E)](LICENSE) ![Android 10+](https://img.shields.io/badge/Android-10%2B-72D6E8?labelColor=0B0B0E)
+
+**[Download the latest version](../../releases/latest)** · [How to install](#install) · [Report a problem](../../issues/new/choose)
+
+![Typing a sentence with the D-pad and buttons](docs/images/demo.gif)
+
+*A real screen recording from my AYN Odin 2 Portal: typing with the D-pad and A, Y for space, RT for a capital letter and LT for numbers and symbols.*
+
 ## Who made this
 
 I'm Emre, and I don't write code. I want to say that plainly: every line of this app was written by Claude, Anthropic's AI. My part was the idea, deciding how it should look, feel and sound, and testing it on my AYN Odin 2 Portal, over and over, until it felt right. The sounds were made by Claude from scratch too, modelled on button sounds I picked out.
@@ -15,10 +23,6 @@ I'm Emre, and I don't write code. I want to say that plainly: every line of this
 I'm sharing it to give something back to the community. There's no catch and nothing is for sale.
 
 Since I can't read the code myself, I can't promise it's flawless, and it has only been tested on one device. If something goes wrong on yours, please open an issue and tell me what happened. If you can read code, improvements are very welcome.
-
-![Typing a sentence with the D-pad and buttons](docs/images/demo.gif)
-
-*A real screen recording from my AYN Odin 2 Portal: typing with the D-pad and A, Y for space, RT for a capital letter and LT for numbers and symbols.*
 
 ## Screenshots
 
@@ -57,7 +61,13 @@ All of these are real screenshots from my Odin 2 Portal.
 - Android 10 or newer
 - A built-in controller or a connected gamepad
 
-Tested on the AYN Odin 2 Portal. If you try it on another device, please share how it went in [Issues](../../issues).
+## Tested on
+
+| Device | Android | Result |
+|---|---|---|
+| AYN Odin 2 Portal | 13 | Everything tested |
+
+Tried it on something else? Please [tell me how it went](../../issues/new/choose), even if it worked perfectly. That's how this list grows.
 
 ## Install
 

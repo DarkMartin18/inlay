@@ -1,0 +1,19 @@
+name: It works on my device
+description: Good news is useful too. Help build the list of tested devices.
+labels: [device report]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: Your device
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything odd or missing?
+      description: Everything fine? Just say so.
