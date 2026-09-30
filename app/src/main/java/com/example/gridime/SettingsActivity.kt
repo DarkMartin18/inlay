@@ -1,0 +1,551 @@
+package com.example.gridime
+
+import android.animation.ValueAnimator
+import android.graphics.Rect
+import android.app.Activity
+import android.media.AudioManager
+import android.content.Intent
+import android.os.Bundle
+import android.provider.Settings
+import android.view.Gravity
+import android.view.KeyEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.Toast
+import kotlin.math.roundToInt
+
+/**
+ * The Settings app, built for a controller:
+ *  - LB / RB switch between the section tabs at the top
+ *  - Up / Down moves between settings, Left / Right changes one, A acts
+ *  - Y shows or hides the live keyboard preview
+ *  - B closes
+ * The bar at the bottom always shows these, in your chosen button style.
+ */
+class SettingsActivity : Activity() {
+
+    private lateinit var settings: KeyboardSettings
+    private lateinit var feedback: Feedback
+    private lateinit var tabs: TabBar
+    private lateinit var scroll: ScrollView
+    private lateinit var content: LinearLayout
+    private lateinit var preview: KeyGridView
+    private lateinit var controlBar: ControlBar
+    private var currentPage = 0
+    private var focusableRows: List<SettingRow> = emptyList()
+
+    private val dp by lazy { resources.displayMetrics.density }
+    private fun px(v: Float) = (v * dp).roundToInt()
+
+    private class Section(val title: String, val rows: List<SettingRow>)
+    private class Page(val title: String, val build: () -> List<Section>)
+
+    private val pages: List<Page> by lazy {
+        listOf(
+            Page("Look", this::lookPage),
+            Page("Controls", this::controlsPage),
+            Page("Sound & haptics", this::feedbackPage),
+            Page("Clipboard", this::clipboardPage),
+            Page("Button guide", this::guidePage),
+            Page("About", this::aboutPage)
+        )
+    }
+
+    // =====================================================================
+    // LIFECYCLE
+    // =====================================================================
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.statusBarColor = SettingsStyle.background
+        window.navigationBarColor = SettingsStyle.background
+        settings = KeyboardSettings.load(this)
+        // The volume buttons change the same volume the sounds play at (media),
+        // so what you set here is exactly what you hear on the keyboard.
+        volumeControlStream = AudioManager.STREAM_MUSIC
+        feedback = Feedback(this).apply { update(settings) }
+        SettingRow.buttonStyle = settings.buttonStyle
+        SettingRow.sounds = feedback
+        setContentView(buildScreen().also { muteSystemSounds(it) })
+        showPage(0, focusIndex = 0, animate = false)
+        // A soft tick whenever the focus moves to another row (console-style)
+        window.decorView.viewTreeObserver.addOnGlobalFocusChangeListener { old, new ->
+            if (old != null && new is SettingRow && !rebuilding) feedback.move()
+        }
+    }
+
+    override fun onDestroy() {
+        panelAnim?.cancel()
+        SettingRow.sounds = null
+        feedback.release()
+        super.onDestroy()
+    }
+
+    /** Save, then show the change on the preview straight away. */
+    private fun update(changed: KeyboardSettings) {
+        val styleChanged = changed.buttonStyle != settings.buttonStyle
+        settings = changed
+        settings.save(this)
+        feedback.update(settings)
+        preview.applySettings(settings)
+        if (styleChanged) {
+            // Button icons appear all over Settings: redraw them in the new style
+            SettingRow.buttonStyle = settings.buttonStyle
+            tabs.style = settings.buttonStyle
+            refreshControlBar()
+            val focused = focusableRows.indexOfFirst { it.hasFocus() }.coerceAtLeast(0)
+            showPage(currentPage, focusIndex = focused, animate = false)
+        }
+    }
+
+    // =====================================================================
+    // SCREEN
+    // =====================================================================
+    private fun buildScreen(): View {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(SettingsStyle.background)
+        }
+
+        tabs = TabBar(this, pages.map { it.title }) { index ->
+            slideFrom = if (index > currentPage) 1 else -1
+            switchPage(index)
+        }.apply {
+            style = settings.buttonStyle
+        }
+        root.addView(tabs, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        // Content column: centred, never wider than a comfortable reading width
+        content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 0, 0, px(Design.SPACE_XL))
+        }
+        val sidePadding = px(Design.SPACE_XL)
+        val contentWidth = minOf(resources.displayMetrics.widthPixels - 2 * sidePadding, px(MAX_CONTENT_WIDTH))
+        val column = FrameLayout(this).apply {
+            addView(content, FrameLayout.LayoutParams(contentWidth, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL))
+            setPadding(sidePadding, 0, sidePadding, 0)
+        }
+        scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            isSmoothScrollingEnabled = true
+            // Content softly fades out at the top and bottom edges instead of being cut off
+            isVerticalFadingEdgeEnabled = true
+            setFadingEdgeLength(px(Design.SPACE_XL))
+            addView(column)
+        }
+        root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        preview = KeyGridView(this).apply {
+            isFocusable = false
+            feedback = this@SettingsActivity.feedback
+            applySettings(settings)
+            visibility = if (settings.showPreview) View.VISIBLE else View.GONE
+        }
+        root.addView(preview, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        controlBar = ControlBar(this)
+        root.addView(controlBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        refreshControlBar()
+        return root
+    }
+
+    private fun refreshControlBar() {
+        controlBar.show(
+            settings.buttonStyle,
+            listOf(
+                "{L1} {R1} Sections",
+                "{A} Select",
+                if (settings.showPreview) "{Y} Hide keyboard" else "{Y} Show keyboard",
+                "{B} Close"
+            )
+        )
+    }
+
+    private fun switchPage(index: Int) {
+        if (index == currentPage) return
+        // A page change is a bigger step than moving between rows: the pack's
+        // space-bar sound, lower and fuller than the navigation tick.
+        feedback.space()
+        showPage(index, focusIndex = 0, animate = true)
+    }
+
+    private var rebuilding = false
+    private var slideFrom = 1
+
+    private fun showPage(index: Int, focusIndex: Int, animate: Boolean) {
+        rebuilding = true
+        currentPage = index
+        tabs.select(index)
+        content.removeAllViews()
+
+        val rows = mutableListOf<SettingRow>()
+        pages[index].build().forEach { section ->
+            content.addView(SectionHeader(this, section.title))
+            val card = SettingsCard(this)
+            section.rows.forEach { row ->
+                row.id = View.generateViewId()
+                card.addRow(row)
+                rows += row
+            }
+            content.addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        // Up on the first row / Down on the last stays put instead of leaving the page
+        rows.firstOrNull()?.let { it.nextFocusUpId = it.id }
+        rows.lastOrNull()?.let { it.nextFocusDownId = it.id }
+        focusableRows = rows
+
+        if (animate) scroll.scrollTo(0, 0)
+        muteSystemSounds(content)
+        rows.getOrNull(focusIndex.coerceIn(0, rows.lastIndex.coerceAtLeast(0)))?.requestFocus()
+        rebuilding = false
+
+        if (animate) {
+            content.alpha = 0f
+            // The new page slides in from the side you moved towards
+            content.translationX = px(12f * slideFrom).toFloat()
+            content.animate().alpha(1f).translationX(0f).setDuration(Design.MOTION_PAGE)
+                .setInterpolator(Design.EASE_OUT).start()
+        }
+    }
+
+    // =====================================================================
+    // KEYBOARD PREVIEW: slides up from the bottom and pushes the page up with it,
+    // keeping the row you're on in view (like a real keyboard appearing).
+    // =====================================================================
+    private var panelAnim: ValueAnimator? = null
+
+    private fun togglePreview() {
+        val show = !settings.showPreview
+        settings = settings.copy(showPreview = show)
+        settings.save(this)
+        refreshControlBar()
+        if (show) feedback.on() else feedback.off()
+
+        val fullHeight = measuredPreviewHeight()
+        val from = if (preview.visibility == View.VISIBLE) preview.height else 0
+        val to = if (show) fullHeight else 0
+        preview.visibility = View.VISIBLE
+
+        panelAnim?.cancel()
+        panelAnim = ValueAnimator.ofInt(from, to).apply {
+            duration = Design.MOTION_PANEL
+            interpolator = Design.EASE_STANDARD
+            addUpdateListener {
+                val h = it.animatedValue as Int
+                setPreviewHeight(h)
+                keepFocusVisible(panelHeight = h)
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    if (panelAnim !== animation) return
+                    setPreviewHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+                    preview.visibility = if (settings.showPreview) View.VISIBLE else View.GONE
+                    scroll.post { keepFocusVisible(panelHeight = if (settings.showPreview) preview.height else 0) }
+                }
+            })
+            start()
+        }
+    }
+
+    private fun measuredPreviewHeight(): Int {
+        preview.measure(
+            View.MeasureSpec.makeMeasureSpec(scroll.width.coerceAtLeast(1), View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        return preview.measuredHeight
+    }
+
+    private fun setPreviewHeight(height: Int) {
+        preview.layoutParams = preview.layoutParams.apply { this.height = height }
+    }
+
+    /**
+     * Scrolls just enough that the focused row sits fully inside the visible area.
+     * [panelHeight] is the preview's height this frame, so the page moves in step
+     * with the panel instead of one frame behind it.
+     */
+    private fun keepFocusVisible(panelHeight: Int) {
+        val focused = currentFocus ?: return
+        val child = scroll.getChildAt(0) ?: return
+        val rect = Rect()
+        focused.getDrawingRect(rect)
+        runCatching { (child as ViewGroup).offsetDescendantRectToMyCoords(focused, rect) }.onFailure { return }
+        val margin = px(Design.SPACE_XL)
+        val screen = scroll.parent as View
+        val visibleHeight = screen.height - tabs.height - controlBar.height - panelHeight
+        val top = scroll.scrollY
+        val bottom = top + visibleHeight
+        val target = when {
+            rect.bottom + margin > bottom -> rect.bottom + margin - visibleHeight
+            rect.top - margin < top -> rect.top - margin
+            else -> return
+        }
+        scroll.scrollTo(0, target.coerceAtLeast(0))
+    }
+
+    // =====================================================================
+    // CONTROLLER
+    // =====================================================================
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val first = event.repeatCount == 0
+        when (keyCode) {
+            KeyEvent.KEYCODE_BUTTON_L1 -> if (first) { slideFrom = -1; switchPage((currentPage - 1 + pages.size) % pages.size) }
+            KeyEvent.KEYCODE_BUTTON_R1 -> if (first) { slideFrom = 1; switchPage((currentPage + 1) % pages.size) }
+            KeyEvent.KEYCODE_BUTTON_Y -> if (first) togglePreview()
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> if (first) close()
+            else -> return super.onKeyDown(keyCode, event)
+        }
+        return true
+    }
+
+    private var closing = false
+
+    /** Play the pack's "back" sound, then close once it has had time to ring out. */
+    private fun close() {
+        if (closing) return
+        closing = true
+        feedback.back()
+        scroll.postDelayed({ finish() }, CLOSE_DELAY_MS)
+    }
+
+    /** Settings speaks with the keyboard's sound pack only, never Android's own clicks. */
+    private fun muteSystemSounds(view: View) {
+        view.isSoundEffectsEnabled = false
+        if (view is ViewGroup) for (i in 0 until view.childCount) muteSystemSounds(view.getChildAt(i))
+    }
+
+    // =====================================================================
+    // PAGES
+    // =====================================================================
+    private fun lookPage(): List<Section> {
+        lateinit var swatches: SwatchRow
+        lateinit var custom: HueRow
+        swatches = SwatchRow(this, "Highlight colour", "The glow that follows your selection",
+            Palette.accents.map { it.second }, settings.accentIndex) {
+            custom.setActive(false)
+            update(settings.copy(accentIndex = it))
+        }
+        custom = HueRow(this, "Custom colour", "Any colour you like. Left and right move around the colour wheel",
+            settings.customHue, active = settings.accentIndex < 0) {
+            swatches.clearSelection()
+            update(settings.copy(accentIndex = -1, customHue = it))
+        }
+        return listOf(
+        Section("Colour", listOf(
+            swatches,
+            custom,
+            ChoiceRow(this, "Key colours", "Every theme is made for OLED screens",
+                Palette.tones.map { it.name }, settings.toneIndex) {
+                update(settings.copy(toneIndex = it))
+            }
+        )),
+        Section("Style", listOf(
+            ChoiceRow(this, "Button icons", "Match the controller you're holding",
+                ButtonStyle.values().map { it.label }, settings.buttonStyle.ordinal) {
+                update(settings.copy(buttonStyle = ButtonStyle.values()[it]))
+            },
+            ChoiceRow(this, "Key shape", "How rounded the keys are",
+                KeyShape.values().map { it.label }, settings.keyShape.ordinal) {
+                update(settings.copy(keyShape = KeyShape.values()[it]))
+            },
+            ChoiceRow(this, "Highlight style", "How the selected key is marked. Solid is the simplest",
+                HighlightStyle.values().map { it.label }, settings.highlightStyle.ordinal) {
+                update(settings.copy(highlightStyle = HighlightStyle.values()[it]))
+            },
+            ChoiceRow(this, "Highlight motion", "Fluid leans slightly into each move. Instant has no animation",
+                HighlightMotion.values().map { it.label }, settings.motion.ordinal) {
+                update(settings.copy(motion = HighlightMotion.values()[it]))
+            }
+        )),
+        Section("Letters", listOf(
+            ChoiceRow(this, "Font", "Hyperlegible is designed to be the easiest to read",
+                FontChoice.values().map { it.label }, settings.font.ordinal) {
+                update(settings.copy(font = FontChoice.values()[it]))
+            },
+            SliderRow(this, "Letter weight", "How bold the letters are", 0, 10, settings.letterWeight,
+                { it.toString() }) {
+                update(settings.copy(letterWeight = it))
+            }
+        )),
+        Section("Layout", listOf(
+            ChoiceRow(this, "Key layout", "Grid lines keys up in straight columns, so up and down never guess",
+                KeyLayout.values().map { it.label }, settings.layout.ordinal) {
+                update(settings.copy(layout = KeyLayout.values()[it]))
+            },
+            ChoiceRow(this, "Keyboard size", "Also on the keyboard: press {L3}",
+                listOf("Normal", "Large", "Largest"), settings.sizeLevel) {
+                update(settings.copy(sizeLevel = it))
+            }
+        ))
+        )
+    }
+
+    private fun controlsPage() = listOf(
+        Section("Navigation", listOf(
+            SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the stick",
+                0, 4, settings.stickSpeed, { STICK_LABELS[it] }) {
+                update(settings.copy(stickSpeed = it))
+            }
+        )),
+        Section("Hints", listOf(
+            ToggleRow(this, "Button icons on keys", "Small {X} {Y} style badges in the key corners",
+                settings.showHints) {
+                update(settings.copy(showHints = it))
+            },
+            ToggleRow(this, "Combo tips", "Shows what you can do while holding {R2}",
+                settings.comboHints) {
+                update(settings.copy(comboHints = it))
+            }
+        )),
+        Section("Shortcuts", listOf(
+            ToggleRow(this, "Select all key", "When off, double-press {SELECTx2} instead",
+                settings.selectAllButton) {
+                update(settings.copy(selectAllButton = it))
+            },
+            ToggleRow(this, "Double space for full stop", "Press {Y} twice after a word to type \". \"",
+                settings.doubleSpacePeriod) {
+                update(settings.copy(doubleSpacePeriod = it))
+            },
+            ToggleRow(this, "Undo shortcut", "Hold {R2} and press {X}",
+                settings.undoCombo) {
+                update(settings.copy(undoCombo = it))
+            }
+        ))
+    )
+
+    private fun feedbackPage() = listOf(
+        Section("Vibration", listOf(
+            ToggleRow(this, "Vibration", null, settings.vibration) {
+                update(settings.copy(vibration = it))
+            },
+            SliderRow(this, "When moving", "A light tick for each key you pass",
+                0, 10, settings.moveStrength, this::offOr, silent = true) {
+                update(settings.copy(moveStrength = it))
+                feedback.move()
+            },
+            SliderRow(this, "When pressing", "A firmer tap when you type",
+                0, 10, settings.pressStrength, this::offOr, silent = true) {
+                update(settings.copy(pressStrength = it))
+                feedback.key()
+            },
+            ActionRow(this, "Try it", "A key press, a trigger and caps lock") {
+                playSequence(listOf(feedback::key, feedback::on, feedback::lock))
+            }
+        )),
+        Section("Sound", listOf(
+            ActionRow(this, "Sound test", "Plays the keyboard's real sounds at their real volume, in order: " +
+                "move, type, space, delete, trigger on, trigger off, caps lock, select all, enter") {
+                playSequence(listOf(
+                    feedback::move, feedback::key, feedback::space, feedback::delete, feedback::on,
+                    feedback::off, feedback::lock, feedback::selectAll, feedback::confirm
+                ))
+            },
+            ChoiceRow(this, "Sound pack", "Soft is a gentle thud with a crisp click. Soft Deep is darker and weightier. Tactile is dry clicks. Chime is soft notes",
+                SoundPack.values().map { it.label }, settings.soundPack.ordinal) {
+                update(settings.copy(soundPack = SoundPack.values()[it]))
+                // Give the new pack a moment to load, then play a short sample of it
+                scroll.postDelayed({ feedback.key() }, 220)
+                scroll.postDelayed({ feedback.on() }, 520)
+            },
+            SliderRow(this, "Volume", "Follows your media volume, so turn that up too",
+                0, 10, settings.soundVolume, this::offOr, silent = true) {
+                update(settings.copy(soundVolume = it))
+                feedback.key()
+            },
+            ToggleRow(this, "Navigation ticks", "A soft tick as the highlight moves",
+                settings.moveSounds) {
+                update(settings.copy(moveSounds = it))
+                feedback.move()
+            },
+            ToggleRow(this, "Play in silent mode", "When off, sounds mute with your silent mode",
+                settings.soundInSilent) {
+                update(settings.copy(soundInSilent = it))
+            }
+        ))
+    )
+
+    private fun clipboardPage() = listOf(
+        Section("History", listOf(
+            ToggleRow(this, "Remember copied text",
+                "Your last ${Layouts.MAX_CLIP_CARDS} copies, on this device only. Passwords are never kept.",
+                settings.saveClipHistory) {
+                update(settings.copy(saveClipHistory = it))
+            },
+            ActionRow(this, "Clear clipboard history", null) {
+                ClipboardHistory.clear(this)
+                Toast.makeText(this, "Clipboard history cleared", Toast.LENGTH_SHORT).show()
+            }
+        ))
+    )
+
+    private fun guidePage(): List<Section> {
+        val editing = mutableListOf(
+            GuideRow(this, "Move the text cursor", "{L1} {R1}"),
+            GuideRow(this, "Jump a whole word", "{R2} + {L1} {R1}"),
+            GuideRow(this, "Select text", "{SELECT}"),
+            GuideRow(this, "Select everything", "{SELECTx2}")
+        )
+        if (settings.undoCombo) editing += GuideRow(this, "Undo", "{R2} + {X}")
+        return listOf(
+            Section("Typing", listOf(
+                GuideRow(this, "Type the highlighted key", "{A}"),
+                GuideRow(this, "Delete · hold to speed up", "{X}"),
+                GuideRow(this, "Space", "{Y}"),
+                GuideRow(this, "Shift · tap twice for caps lock", "{R2}"),
+                GuideRow(this, "One capital letter", "{R2} + {A}"),
+                GuideRow(this, "Letters and symbols", "{L2}"),
+                GuideRow(this, "Enter · Search · Go", "{START}")
+            )),
+            Section("Editing", editing),
+            Section("Keyboard", listOf(
+                GuideRow(this, "Close the keyboard", "{B}"),
+                GuideRow(this, "Change keyboard size", "{L3}")
+            ))
+        )
+    }
+
+    private fun aboutPage() = listOf(
+        Section("Setup", listOf(
+            ActionRow(this, "Turn on Grid Keyboard", "Opens Android's list of keyboards") {
+                startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+            },
+            ActionRow(this, "Switch keyboard", "Choose which keyboard is active right now") {
+                getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+            }
+        )),
+        Section("Grid Keyboard", listOfNotNull(
+            InfoRow(this, "Version", appVersion()),
+            InfoRow(this, "Licence", "Free and open source"),
+            SOURCE_URL.takeIf { it.isNotEmpty() }?.let { url ->
+                ActionRow(this, "Source code", "See how it's made, report a problem or suggest an idea") {
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                }
+            },
+            InfoRow(this, "Fonts: Atkinson Hyperlegible Next and Inter", "Open Font Licence")
+        ))
+    )
+
+    /** The version number set in the app's build file, so it's only ever written in one place. */
+    private fun appVersion(): String = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull() ?: "1.0.0"
+
+    /** Plays sounds one after another with a calm gap, starting after the tap sound. */
+    private fun playSequence(cues: List<() -> Unit>) {
+        cues.forEachIndexed { i, cue -> scroll.postDelayed({ cue() }, 350L + i * 450L) }
+    }
+
+    private fun offOr(value: Int): String = if (value == 0) "Off" else value.toString()
+
+    private companion object {
+        const val MAX_CONTENT_WIDTH = 720f
+        const val CLOSE_DELAY_MS = 140L
+        /** The project's web page (e.g. on GitHub). Leave empty to hide the "Source code" row. */
+        const val SOURCE_URL = ""
+        val STICK_LABELS = listOf("Slowest", "Slow", "Medium", "Fast", "Fastest")
+    }
+}

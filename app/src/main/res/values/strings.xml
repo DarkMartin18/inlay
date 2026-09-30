@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Grid Keyboard</string>
+    <string name="ime_name">Grid Keyboard (Gamepad)</string>
+</resources>
