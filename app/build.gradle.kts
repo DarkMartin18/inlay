@@ -9,7 +9,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.dakingeman.gridkeyboard"
+        applicationId = "io.github.dakingeman.inlay"
         minSdk = 29
         targetSdk = 37
         versionCode = 1

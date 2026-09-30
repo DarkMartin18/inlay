@@ -1,8 +1,8 @@
-# Grid Keyboard — Design Guide
+# Inlay — Design Guide
 
 *Version 1.0.0*
 
-The source of truth for how Grid Keyboard looks, moves, sounds and feels.
+The source of truth for how Inlay looks, moves, sounds and feels.
 The numbers live in code in `Design.kt`; this page explains the thinking behind them.
 When adding anything new, check it against these rules first.
 
@@ -168,3 +168,14 @@ Four **sound packs** share the same ten cues and the same meanings, so switching
 | View / Select | select mode · ×2 select all | — |
 | Menu / Start | enter | — |
 | LS (press) | keyboard size | — |
+
+## App icon
+
+A miniature of the keyboard itself: three rows of keys, one of them lit in the accent colour.
+
+- **Canvas:** 108 dp adaptive icon. The logo is 50 × 48 dp, inside the 66 dp safe zone, so no launcher mask can cut it.
+- **Background:** solid `#0B0B0E`. **Keys:** `#F2F3F5`. **Lit key:** `#72D6E8` (the accent).
+- **Keys:** 14 dp squares with 4 dp gaps and a 12 dp space bar across the bottom. Corner radius 4 dp, the same soft shape as the keys in the app.
+- **Themed icon (Android 13+):** the same shape in one colour. The lit key becomes a cut-out, so it still reads as the "selected" key.
+- **Rules:** flat vector shapes only, no shadows, no gradients, no text.
+- **Files:** `res/drawable/ic_launcher_*.xml` and `res/mipmap-anydpi-v26/ic_launcher*.xml`. The store-size version is `docs/images/icon.png` (512 × 512).

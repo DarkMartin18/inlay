@@ -4,10 +4,11 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:label="@string/app_name"
-        android:allowBackup="true">
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name">
 
-        <!-- The keyboard itself -->
         <service
             android:name=".GridKeyboardService"
             android:label="@string/ime_name"
@@ -21,7 +22,6 @@
                 android:resource="@xml/method" />
         </service>
 
-        <!-- The Settings app (shows up in your app drawer) -->
         <activity
             android:name=".SettingsActivity"
             android:label="@string/app_name"
@@ -32,6 +32,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
 </manifest>

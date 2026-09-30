@@ -5,7 +5,7 @@ import android.view.animation.Interpolator
 import android.view.animation.PathInterpolator
 
 /**
- * Grid Keyboard design tokens: the single source of truth for how the app looks,
+ * Inlay design tokens: the single source of truth for how the app looks,
  * moves, sounds and feels. Every screen reads from here instead of inventing numbers.
  * See DESIGN_GUIDE.md for the reasoning behind each value.
  */

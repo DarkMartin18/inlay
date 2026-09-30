@@ -1,6 +1,8 @@
-# Grid Keyboard
+<p align="center"><img src="docs/images/icon.png" width="128" alt="Inlay icon"></p>
 
-**A keyboard for Android handhelds that you drive with the controller, not your thumbs on the glass.**
+# Inlay
+
+**A gamepad keyboard for Android handhelds.** You drive it with the controller, not your thumbs on the glass.
 
 Move with the D-pad or stick, press A to type, and never reach for the touchscreen again. Made for handhelds like the AYN Odin and Retroid Pocket, and for any Android device with a gamepad connected.
 
@@ -61,10 +63,10 @@ Tested on the AYN Odin 2 Portal. If you try it on another device, please share h
 
 1. Download the latest `.apk` file from the [Releases](../../releases) page onto your device.
 2. Open it and allow installing from this source when Android asks.
-3. Open **Grid Keyboard** and choose **About → Turn on Grid Keyboard**.
+3. Open **Inlay** and choose **About → Turn on Inlay**.
 4. Choose **About → Switch keyboard** to make it the active keyboard.
 
-Tip: the [Obtainium](https://github.com/ImranR98/Obtainium) app can watch this page and update Grid Keyboard for you.
+Tip: the [Obtainium](https://github.com/ImranR98/Obtainium) app can watch this page and update Inlay for you.
 
 ## Build it yourself
 

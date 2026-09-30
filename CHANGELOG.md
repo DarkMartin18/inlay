@@ -2,7 +2,7 @@
 
 ## 1.0.0 — First release
 
-The first public version of Grid Keyboard: a controller-first keyboard for Android handhelds.
+The first public version of Inlay: a controller-first keyboard for Android handhelds.
 
 ### What's in it
 
@@ -44,7 +44,7 @@ The first public version of Grid Keyboard: a controller-first keyboard for Andro
 
 ### How it was made
 
-Grid Keyboard grew over eleven rounds of design, testing and feedback on an AYN Odin 2 Portal, from a first rough grid to what you see here. Along the way:
+Inlay grew over eleven rounds of design, testing and feedback on an AYN Odin 2 Portal, from a first rough grid to what you see here. Along the way:
 
 - The D-pad and stick input was rebuilt so the keyboard never interferes with the rest of the system.
 - The design was rebuilt around a written design guide (`DESIGN_GUIDE.md`) with shared spacing, corners, motion and contrast rules.

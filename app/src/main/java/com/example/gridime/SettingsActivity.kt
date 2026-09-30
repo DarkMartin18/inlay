@@ -510,14 +510,14 @@ class SettingsActivity : Activity() {
 
     private fun aboutPage() = listOf(
         Section("Setup", listOf(
-            ActionRow(this, "Turn on Grid Keyboard", "Opens Android's list of keyboards") {
+            ActionRow(this, "Turn on Inlay", "Opens Android's list of keyboards") {
                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
             },
             ActionRow(this, "Switch keyboard", "Choose which keyboard is active right now") {
                 getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
             }
         )),
-        Section("Grid Keyboard", listOfNotNull(
+        Section("Inlay", listOfNotNull(
             InfoRow(this, "Version", appVersion()),
             InfoRow(this, "Licence", "Free and open source"),
             SOURCE_URL.takeIf { it.isNotEmpty() }?.let { url ->
@@ -545,7 +545,7 @@ class SettingsActivity : Activity() {
         const val MAX_CONTENT_WIDTH = 720f
         const val CLOSE_DELAY_MS = 140L
         /** The project's web page (e.g. on GitHub). Leave empty to hide the "Source code" row. */
-        const val SOURCE_URL = ""
+        const val SOURCE_URL = "https://github.com/dakingeman/inlay"
         val STICK_LABELS = listOf("Slowest", "Slow", "Medium", "Fast", "Fastest")
     }
 }
