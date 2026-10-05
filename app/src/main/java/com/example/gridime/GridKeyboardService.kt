@@ -63,6 +63,15 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     private var lastSpaceTime = 0L
     private var bConsumed = false
+    private var consumedHideButtonKeyCode: Int? = null
+    private var consumedHideButtonDownTime: Long? = null
+
+    private val hideKeyboardButtonKeyCode: Int
+        get() = if (settings.buttonStyle == ButtonStyle.SWITCH) {
+            KeyEvent.KEYCODE_BUTTON_A
+        } else {
+            KeyEvent.KEYCODE_BUTTON_B
+        }
 
     // =====================================================================
     // LIFECYCLE
@@ -434,6 +443,19 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     // CONTROLLER BUTTONS
     // =====================================================================
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val isConsumedHideButtonEvent =
+            keyCode == consumedHideButtonKeyCode && event.downTime == consumedHideButtonDownTime
+        if (keyCode == hideKeyboardButtonKeyCode && (isInputViewShown || isConsumedHideButtonEvent)) {
+            if (isInputViewShown && event.repeatCount == 0 && !isConsumedHideButtonEvent) {
+                consumedHideButtonKeyCode = keyCode
+                consumedHideButtonDownTime = event.downTime
+                feedback.back()
+                requestHideSelf(0)
+            }
+            return true
+        }
+        if (isConsumedHideButtonEvent) return true
+
         val grid = gridView
         if (grid == null || !isInputViewShown) return super.onKeyDown(keyCode, event)
         // Held buttons repeat on our own timers, so Android's repeats are ignored
@@ -465,7 +487,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 onEnter()
             }
 
-            // B closes select mode or the clipboard first; otherwise it's Android's Back
+            // Back out of select mode or the clipboard before falling back to Android.
             KeyEvent.KEYCODE_BUTTON_B -> {
                 if (!first && bConsumed) return true
                 if (selecting || grid.isClipsOpen()) {
@@ -485,6 +507,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == consumedHideButtonKeyCode && event.downTime == consumedHideButtonDownTime) {
+            consumedHideButtonKeyCode = null
+            consumedHideButtonDownTime = null
+            return true
+        }
         if (gridView == null || !isInputViewShown) return super.onKeyUp(keyCode, event)
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
