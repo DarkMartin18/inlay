@@ -65,6 +65,20 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private var bConsumed = false
     private var consumedHideButtonKeyCode: Int? = null
     private var consumedHideButtonDownTime: Long? = null
+    private var aButtonDown = false
+    private var aLongPressOpenedVariants = false
+    private var aPressHandled = false
+
+    private val aLongPress = Runnable {
+        val grid = gridView
+        if (aButtonDown && grid != null) {
+            if (grid.showVariantsForSelected()) aLongPressOpenedVariants = true
+            else {
+                grid.pressSelected()
+                aPressHandled = true
+            }
+        }
+    }
 
     private val hideKeyboardButtonKeyCode: Int
         get() = if (settings.buttonStyle == ButtonStyle.SWITCH) {
@@ -171,6 +185,10 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         rightTriggerDown = false
         leftTriggerDown = false
         gridView?.setHeldShift(false)
+        handler.removeCallbacks(aLongPress)
+        aButtonDown = false
+        aLongPressOpenedVariants = false
+        aPressHandled = false
     }
 
     override fun onUpdateSelection(
@@ -467,10 +485,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             KeyEvent.KEYCODE_DPAD_LEFT -> if (first) startNav(-1, 0, fromStick = false)
             KeyEvent.KEYCODE_DPAD_RIGHT -> if (first) startNav(1, 0, fromStick = false)
 
-            KeyEvent.KEYCODE_BUTTON_A -> if (first) {
-                if (r2Held) r2UsedAsModifier = true
-                grid.pressSelected()
-            }
+            KeyEvent.KEYCODE_BUTTON_A -> if (first) onAButtonDown(grid)
             KeyEvent.KEYCODE_BUTTON_X -> if (first) onXButton(grid)
             KeyEvent.KEYCODE_BUTTON_Y -> if (first) {
                 feedback.space()
@@ -490,7 +505,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             // Back out of select mode or the clipboard before falling back to Android.
             KeyEvent.KEYCODE_BUTTON_B -> {
                 if (!first && bConsumed) return true
-                if (selecting || grid.isClipsOpen()) {
+                if (grid.variantsOpen) {
+                    grid.closeVariants()
+                    feedback.back()
+                    bConsumed = true
+                } else if (selecting || grid.isClipsOpen()) {
                     if (grid.isClipsOpen()) grid.closeClips(focusOnHistoryButton = true)
                     else exitSelectMode(collapse = true)
                     feedback.back()
@@ -518,15 +537,49 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> stopNav()
             KeyEvent.KEYCODE_BUTTON_X -> deleteRepeater.stop()
             KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> cursorRepeater.stop()
+            KeyEvent.KEYCODE_BUTTON_A -> onAButtonUp()
             KeyEvent.KEYCODE_BUTTON_R2 -> r2Up()
             KeyEvent.KEYCODE_BUTTON_B -> {
                 val consumed = bConsumed
                 bConsumed = false
-                return if (consumed) true else super.onKeyUp(keyCode, event)
+                if (consumed) return true
+                if (gridView?.variantsOpen == true) {
+                    gridView?.closeVariants()
+                    feedback.back()
+                    return true
+                }
+                return super.onKeyUp(keyCode, event)
             }
             else -> if (keyCode !in HANDLED_KEYS) return super.onKeyUp(keyCode, event)
         }
         return true
+    }
+
+    private fun onAButtonDown(grid: KeyGridView) {
+        if (aButtonDown) return
+        aButtonDown = true
+        aLongPressOpenedVariants = false
+        aPressHandled = false
+        if (r2Held) r2UsedAsModifier = true
+        if (grid.variantsOpen) {
+            grid.pressSelected()
+            aPressHandled = true
+        } else if (grid.hasVariantsSelected()) {
+            handler.postDelayed(aLongPress, LONG_PRESS_MS)
+        } else {
+            grid.pressSelected()
+            aPressHandled = true
+        }
+    }
+
+    private fun onAButtonUp() {
+        handler.removeCallbacks(aLongPress)
+        if (aButtonDown && !aLongPressOpenedVariants && !aPressHandled) {
+            gridView?.pressSelected()
+        }
+        aButtonDown = false
+        aLongPressOpenedVariants = false
+        aPressHandled = false
     }
 
     private fun onXButton(grid: KeyGridView) {
@@ -677,6 +730,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         const val TRIGGER_RELEASE = 0.3f
         const val TRIGGER_DEDUPE_MS = 80L
         const val DOUBLE_PRESS_MS = 350L
+        const val LONG_PRESS_MS = 450L
 
         val HANDLED_KEYS = setOf(
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_Y,

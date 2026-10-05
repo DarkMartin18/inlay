@@ -10,6 +10,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.os.SystemClock
 import kotlin.math.PI
 import kotlin.math.abs
@@ -148,6 +149,16 @@ class KeyGridView(context: Context) : View(context) {
     private var selectedCount = 0
     private var clipPreview: String? = null
     private var clips: List<String> = emptyList()
+    private var openVariants: List<String> = emptyList()
+    private var selectedVariant = 0
+    private var touchingKey = false
+    private var touchX = 0f
+    private var touchY = 0f
+    private var touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
+    private val touchLongPress = Runnable {
+        if (touchingKey && !variantsOpen) showVariantsForSelected()
+    }
 
     /**
      * Column memory: where you were aiming horizontally when you started moving up
@@ -299,6 +310,15 @@ class KeyGridView(context: Context) : View(context) {
     // CALLED BY THE KEYBOARD SERVICE
     // =====================================================================
     fun moveFocus(dx: Int, dy: Int) {
+        if (variantsOpen) {
+            if (dx != 0) {
+                selectedVariant = (selectedVariant + dx).mod(openVariants.size)
+                feedback?.move()
+                invalidate()
+                return
+            }
+            if (dy != 0) closeVariants()
+        }
         val rows = allRows()
         var wrapped = false
         if (dx != 0) {
@@ -320,8 +340,43 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     fun pressSelected() {
+        if (variantsOpen) {
+            commitVariant(selectedVariant)
+            return
+        }
         clampFocus()
         press(allRows()[selRow][selCol])
+    }
+
+    val variantsOpen: Boolean get() = openVariants.isNotEmpty()
+
+    fun hasVariantsSelected(): Boolean {
+        if (layer != Layer.LETTERS || selRow == 0) return false
+        val key = allRows()[selRow][selCol]
+        return key.type == KeyType.CHAR && Layouts.letterVariants(displayLabel(key).single()).isNotEmpty()
+    }
+
+    fun showVariantsForSelected(): Boolean {
+        if (!hasVariantsSelected()) return false
+        val key = allRows()[selRow][selCol]
+        openVariants = Layouts.letterVariants(displayLabel(key).single())
+        selectedVariant = 0
+        feedback?.on()
+        invalidate()
+        return true
+    }
+
+    fun closeVariants() {
+        if (!variantsOpen) return
+        openVariants = emptyList()
+        selectedVariant = 0
+        invalidate()
+    }
+
+    private fun commitVariant(index: Int) {
+        val text = openVariants.getOrNull(index) ?: return
+        closeVariants()
+        emitCharacter(text)
     }
 
     /** R2 tap: off -> next letter only -> caps lock -> off. */
@@ -344,6 +399,7 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     fun toggleLayer() {
+        closeVariants()
         val centre = centreOf(allRows()[selRow], selCol)
         layer = when (layer) {
             Layer.LETTERS -> Layer.SYMBOLS.also { feedback?.on() }
@@ -359,6 +415,7 @@ class KeyGridView(context: Context) : View(context) {
     fun isClipsOpen() = layer == Layer.CLIPS
 
     fun toggleClips() {
+        closeVariants()
         if (layer == Layer.CLIPS) {
             closeClips(focusOnHistoryButton = true)
             feedback?.off()
@@ -432,13 +489,7 @@ class KeyGridView(context: Context) : View(context) {
         pulse()
         when (key.type) {
             KeyType.CHAR -> {
-                feedback?.key()
-                val text = displayLabel(key)
-                if (!heldShift && layer == Layer.LETTERS && shiftState == ShiftState.ONCE) {
-                    shiftState = ShiftState.OFF
-                }
-                invalidate()
-                listener?.onText(text)
+                emitCharacter(displayLabel(key))
             }
             KeyType.SPACE -> {
                 feedback?.space()
@@ -474,6 +525,15 @@ class KeyGridView(context: Context) : View(context) {
             }
             KeyType.EMPTY -> Unit
         }
+    }
+
+    private fun emitCharacter(text: String) {
+        feedback?.key()
+        if (!heldShift && layer == Layer.LETTERS && shiftState == ShiftState.ONCE) {
+            shiftState = ShiftState.OFF
+        }
+        invalidate()
+        listener?.onText(text)
     }
 
     // =====================================================================
@@ -569,6 +629,8 @@ class KeyGridView(context: Context) : View(context) {
             drawChips(canvas, stripRect(), colBackground, comboChips())
             canvas.restoreToCount(saved)
         }
+
+        if (variantsOpen) drawVariants(canvas)
 
         // 5. Button guide under the clipboard cards
         if (layer == Layer.CLIPS && settings.showHints) {
@@ -703,6 +765,48 @@ class KeyGridView(context: Context) : View(context) {
 
         if (settings.showHints) {
             key.hint?.let { badges.drawInCorner(canvas, it, rect.right - u(3f), rect.top + u(3f)) }
+        }
+    }
+
+    private fun variantPopupRect(): RectF {
+        val rows = allRows()
+        val key = keyRect(selRow, rows[selRow], selCol)
+        val height = u(36f)
+        val popupWidth = min(contentWidth(), openVariants.size * u(34f))
+        val leftBound = contentLeft()
+        val rightBound = max(leftBound, leftBound + contentWidth() - popupWidth)
+        val left = (key.centerX() - popupWidth / 2f)
+            .coerceIn(leftBound, rightBound)
+        val top = (key.top - height - gap).coerceAtLeast(edge)
+        return RectF(left, top, left + popupWidth, top + height)
+    }
+
+    private fun variantAt(x: Float, y: Float): Int? {
+        val rect = variantPopupRect()
+        if (!rect.contains(x, y)) return null
+        val cellWidth = rect.width() / openVariants.size
+        return ((x - rect.left) / cellWidth).toInt().coerceIn(0, openVariants.lastIndex)
+    }
+
+    private fun drawVariants(canvas: Canvas) {
+        val rect = variantPopupRect()
+        val cellWidth = rect.width() / openVariants.size
+        openVariants.forEachIndexed { index, variant ->
+            val cell = RectF(
+                rect.left + index * cellWidth,
+                rect.top,
+                rect.left + (index + 1) * cellWidth,
+                rect.bottom
+            )
+            fillPaint.color = if (index == selectedVariant) colAccent else colSpecialKey
+            canvas.drawRoundRect(cell, corner, corner, fillPaint)
+            drawLetter(
+                canvas,
+                variant,
+                cell.centerX(),
+                cell.centerY(),
+                Contrast.inkFor(fillPaint.color)
+            )
         }
     }
 
@@ -905,21 +1009,61 @@ class KeyGridView(context: Context) : View(context) {
     // TOUCH
     // =====================================================================
     override fun onTouchEvent(e: MotionEvent): Boolean {
-        if (e.actionMasked != MotionEvent.ACTION_DOWN) return true
-        val rows = allRows()
-        for (r in rows.indices) {
-            for (c in rows[r].indices) {
-                val rect = keyRect(r, rows[r], c)
-                val hit = e.x >= rect.left - gap / 2 && e.x <= rect.right + gap / 2 &&
-                    e.y >= rect.top - gap / 2 && e.y <= rect.bottom + gap / 2
-                if (hit) {
-                    selRow = r
-                    selCol = c
-                    preferredCentre = null
-                    animateFocus()
-                    press(rows[r][c])
-                    return true
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (variantsOpen) {
+                    variantAt(e.x, e.y)?.let {
+                        commitVariant(it)
+                        return true
+                    }
+                    closeVariants()
                 }
+                val rows = allRows()
+                for (r in rows.indices) {
+                    for (c in rows[r].indices) {
+                        val rect = keyRect(r, rows[r], c)
+                        val hit = e.x >= rect.left - gap / 2 && e.x <= rect.right + gap / 2 &&
+                            e.y >= rect.top - gap / 2 && e.y <= rect.bottom + gap / 2
+                        if (hit) {
+                            selRow = r
+                            selCol = c
+                            preferredCentre = null
+                            touchingKey = true
+                            touchX = e.x
+                            touchY = e.y
+                            animateFocus()
+                            removeCallbacks(touchLongPress)
+                            postDelayed(touchLongPress, ViewConfiguration.getLongPressTimeout().toLong())
+                            return true
+                        }
+                    }
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (variantsOpen) {
+                    variantAt(e.x, e.y)?.let {
+                        if (selectedVariant != it) {
+                            selectedVariant = it
+                            invalidate()
+                        }
+                    }
+                } else if (touchingKey &&
+                    (abs(e.x - touchX) > touchSlop || abs(e.y - touchY) > touchSlop)
+                ) {
+                    removeCallbacks(touchLongPress)
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (touchingKey) {
+                    removeCallbacks(touchLongPress)
+                    touchingKey = false
+                    if (variantsOpen) commitVariant(variantAt(e.x, e.y) ?: selectedVariant)
+                    else press(allRows()[selRow][selCol])
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                removeCallbacks(touchLongPress)
+                touchingKey = false
             }
         }
         return true

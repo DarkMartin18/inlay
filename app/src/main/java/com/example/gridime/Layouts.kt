@@ -33,6 +33,32 @@ object Layouts {
 
     private fun chars(s: String) = s.map { Key(KeyType.CHAR, it.toString()) }
 
+    private val letterVariants = mapOf(
+        'a' to "áàâäãåāăą",
+        'e' to "éèêëēėę",
+        'i' to "íìîïīį",
+        'o' to "óòôöõøō",
+        'u' to "úùûüū",
+        'y' to "ýÿ",
+        'c' to "çćč",
+        'd' to "ďđ",
+        'g' to "ĝğģ",
+        'h' to "ĥ",
+        'j' to "ĵ",
+        'k' to "ķ",
+        'l' to "ľĺļł",
+        'n' to "ñńņ",
+        'r' to "řŕ",
+        's' to "śšş",
+        't' to "ţť",
+        'z' to "źżž"
+    )
+
+    fun letterVariants(char: Char): List<String> {
+        val variants = letterVariants[char.lowercaseChar()] ?: return emptyList()
+        return variants.map { if (char.isUpperCase()) it.uppercase() else it.toString() }
+    }
+
     fun toolRow(selectAllButton: Boolean): List<Key> {
         val select = Key(KeyType.TOOL, "Select", if (selectAllButton) 1.7f else 1.9f, Tool.SELECT, ControllerButton.SELECT)
         val tail = listOf(
