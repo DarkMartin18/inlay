@@ -1,5 +1,10 @@
 <p align="center"><img src="docs/images/icon.png" width="128" alt="Inlay icon"></p>
 
+> This is a fork of [Inlay](https://github.com/dakingeman/inlay).
+> I'm using this fork to experiment with additional features and
+> improvements that I'd like to have in the project.
+
+
 # Inlay
 
 **A gamepad keyboard for Android handhelds.** You drive it with the controller, not your thumbs on the glass.
