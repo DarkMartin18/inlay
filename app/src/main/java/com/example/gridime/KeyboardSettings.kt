@@ -120,6 +120,7 @@ data class KeyboardSettings(
     val selectAllButton: Boolean = false,
     val doubleSpacePeriod: Boolean = true,
     val undoCombo: Boolean = true,
+    val commitVariantOnRelease: Boolean = true,
     // Sound & haptics
     val vibration: Boolean = true,
     val moveStrength: Int = 5,          // 0 to 10
@@ -157,6 +158,7 @@ data class KeyboardSettings(
             .putBoolean(K_SELECT_ALL_BUTTON, selectAllButton)
             .putBoolean(K_DOUBLE_SPACE, doubleSpacePeriod)
             .putBoolean(K_UNDO, undoCombo)
+            .putBoolean(K_COMMIT_VARIANT_ON_RELEASE, commitVariantOnRelease)
             .putBoolean(K_VIBRATION, vibration)
             .putInt(K_MOVE, moveStrength)
             .putInt(K_PRESS, pressStrength)
@@ -191,6 +193,7 @@ data class KeyboardSettings(
         private const val K_SELECT_ALL_BUTTON = "select_all_button"
         private const val K_DOUBLE_SPACE = "double_space_period"
         private const val K_UNDO = "undo_combo"
+        private const val K_COMMIT_VARIANT_ON_RELEASE = "commit_variant_on_release"
         private const val K_VIBRATION = "vibration"
         private const val K_MOVE = "move_strength_v7"     // v7: vibration scale changed
         private const val K_PRESS = "press_strength_v7"
@@ -221,6 +224,7 @@ data class KeyboardSettings(
                 selectAllButton = p.getBoolean(K_SELECT_ALL_BUTTON, d.selectAllButton),
                 doubleSpacePeriod = p.getBoolean(K_DOUBLE_SPACE, d.doubleSpacePeriod),
                 undoCombo = p.getBoolean(K_UNDO, d.undoCombo),
+                commitVariantOnRelease = p.getBoolean(K_COMMIT_VARIANT_ON_RELEASE, d.commitVariantOnRelease),
                 vibration = p.getBoolean(K_VIBRATION, d.vibration),
                 moveStrength = p.getInt(K_MOVE, d.moveStrength),
                 pressStrength = p.getInt(K_PRESS, d.pressStrength),

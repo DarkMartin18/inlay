@@ -574,7 +574,9 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     private fun onAButtonUp() {
         handler.removeCallbacks(aLongPress)
-        if (aButtonDown && !aLongPressOpenedVariants && !aPressHandled) {
+        if (aButtonDown && aLongPressOpenedVariants && settings.commitVariantOnRelease) {
+            gridView?.pressSelected()
+        } else if (aButtonDown && !aLongPressOpenedVariants && !aPressHandled) {
             gridView?.pressSelected()
         }
         aButtonDown = false

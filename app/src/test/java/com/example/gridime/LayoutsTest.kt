@@ -6,6 +6,11 @@ import org.junit.Test
 
 class LayoutsTest {
     @Test
+    fun variantSelectionCommitsOnReleaseByDefault() {
+        assertTrue(KeyboardSettings().commitVariantOnRelease)
+    }
+
+    @Test
     fun vowelsShowAcuteAccentFirst() {
         assertEquals("á", Layouts.letterVariants('a').first())
         assertEquals("é", Layouts.letterVariants('e').first())

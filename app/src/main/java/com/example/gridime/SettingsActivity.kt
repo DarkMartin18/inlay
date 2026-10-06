@@ -410,6 +410,10 @@ class SettingsActivity : Activity() {
                 settings.doubleSpacePeriod) {
                 update(settings.copy(doubleSpacePeriod = it))
             },
+            ToggleRow(this, "Type variant on release", "After holding a key to show variants, release to type the selected character",
+                settings.commitVariantOnRelease) {
+                update(settings.copy(commitVariantOnRelease = it))
+            },
             ToggleRow(this, "Undo shortcut", "Hold {R2} and press {X}",
                 settings.undoCombo) {
                 update(settings.copy(undoCombo = it))

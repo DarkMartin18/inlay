@@ -77,6 +77,7 @@ class KeyGridView(context: Context) : View(context) {
     fun applySettings(s: KeyboardSettings) {
         val layoutChanged = s.layout != settings.layout || s.selectAllButton != settings.selectAllButton
         settings = s
+        commitVariantOnRelease = s.commitVariantOnRelease
         colBackground = s.tone.background
         colKey = s.tone.key
         colSpecialKey = s.tone.special
@@ -151,6 +152,7 @@ class KeyGridView(context: Context) : View(context) {
     private var clips: List<String> = emptyList()
     private var openVariants: List<String> = emptyList()
     private var selectedVariant = 0
+    private var commitVariantOnRelease = true
     private var touchingKey = false
     private var touchX = 0f
     private var touchY = 0f
@@ -1067,8 +1069,13 @@ class KeyGridView(context: Context) : View(context) {
                 if (touchingKey) {
                     removeCallbacks(touchLongPress)
                     touchingKey = false
-                    if (variantsOpen) commitVariant(variantAt(e.x, e.y) ?: selectedVariant)
-                    else press(allRows()[selRow][selCol])
+                    if (variantsOpen) {
+                        if (commitVariantOnRelease) {
+                            commitVariant(variantAt(e.x, e.y) ?: selectedVariant)
+                        }
+                    } else {
+                        press(allRows()[selRow][selCol])
+                    }
                 }
             }
             MotionEvent.ACTION_CANCEL -> {
