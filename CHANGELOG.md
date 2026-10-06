@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0 — Variant input, D-pad tuning, and keyflow refinements
+
+This release builds on the original 1.0.0 release with a set of controller-focused improvements that make variant input and repeated movement feel smoother and more predictable.
+
+### Added
+- Long-press character variants and symbol variant menus.
+- A configurable hold delay for the variant menu, so variant selection can be tuned to each user's preference.
+- A configurable D-pad repeat speed for faster or calmer movement when a direction is held.
+- Support for typing a variant on release, improving the feel of variant selection.
+- Gamepad B as a direct way to close the keyboard.
+
+### Improved
+- Input handling for accent and symbol variants feels more consistent and less disruptive during repeated key movement.
+
 ## 1.0.0 — First release
 
 The first public version of Inlay: a controller-first keyboard for Android handhelds.

@@ -545,7 +545,7 @@ class SettingsActivity : Activity() {
     /** The version number set in the app's build file, so it's only ever written in one place. */
     private fun appVersion(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName
-    }.getOrNull() ?: "1.0.0"
+    }.getOrNull() ?: "1.1.0"
 
     /** Plays sounds one after another with a calm gap, starting after the tap sound. */
     private fun playSequence(cues: List<() -> Unit>) {
