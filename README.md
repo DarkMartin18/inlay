@@ -18,7 +18,7 @@ Free, open source, no ads, no tracking, no internet permission.
 
 ![Typing a sentence with the D-pad and buttons](docs/images/demo.gif)
 
-*A real screen recording from my AYN Odin 2 Portal: typing with the D-pad and A, Y for space, RT for a capital letter and LT for numbers and symbols.*
+*A real screen recording from an AYN Odin 2 Portal: typing with the D-pad and A, Y for space, RT for a capital letter and LT for numbers and symbols.*
 
 ## About this fork
 
