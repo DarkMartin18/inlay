@@ -68,13 +68,17 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private var aButtonDown = false
     private var aLongPressOpenedVariants = false
     private var aPressHandled = false
+    private var aPressTarget: KeyGridView.PressTarget? = null
+    private var aMovedWhilePressed = false
 
     private val aLongPress = Runnable {
         val grid = gridView
-        if (aButtonDown && grid != null) {
-            if (grid.showVariantsForSelected()) aLongPressOpenedVariants = true
+        val target = aPressTarget
+        if (aButtonDown && grid != null && target != null) {
+            if (aMovedWhilePressed || !grid.isSelected(target)) aPressHandled = true
+            else if (grid.showVariants(target)) aLongPressOpenedVariants = true
             else {
-                grid.pressSelected()
+                grid.press(target)
                 aPressHandled = true
             }
         }
@@ -189,6 +193,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         aButtonDown = false
         aLongPressOpenedVariants = false
         aPressHandled = false
+        aPressTarget = null
+        aMovedWhilePressed = false
     }
 
     override fun onUpdateSelection(
@@ -560,14 +566,16 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         aButtonDown = true
         aLongPressOpenedVariants = false
         aPressHandled = false
+        aPressTarget = grid.capturePressTarget()
+        aMovedWhilePressed = false
         if (r2Held) r2UsedAsModifier = true
         if (grid.variantsOpen) {
             grid.pressSelected()
             aPressHandled = true
-        } else if (grid.hasVariantsSelected()) {
+        } else if (aPressTarget?.let(grid::hasVariants) == true) {
             handler.postDelayed(aLongPress, LONG_PRESS_MS)
         } else {
-            grid.pressSelected()
+            aPressTarget?.let(grid::press)
             aPressHandled = true
         }
     }
@@ -575,13 +583,26 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private fun onAButtonUp() {
         handler.removeCallbacks(aLongPress)
         if (aButtonDown && aLongPressOpenedVariants && settings.commitVariantOnRelease) {
-            gridView?.pressSelected()
+            if (gridView?.variantsOpen == true) gridView?.pressSelected()
         } else if (aButtonDown && !aLongPressOpenedVariants && !aPressHandled) {
-            gridView?.pressSelected()
+            aPressTarget?.let { gridView?.press(it) }
         }
         aButtonDown = false
         aLongPressOpenedVariants = false
         aPressHandled = false
+        aPressTarget = null
+        aMovedWhilePressed = false
+    }
+
+    private fun onFocusMovedDuringAPress(grid: KeyGridView) {
+        val target = aPressTarget ?: return
+        if (!aButtonDown || !grid.hasVariants(target) || grid.isSelected(target)) return
+        aMovedWhilePressed = true
+        if (aLongPressOpenedVariants) {
+            grid.closeVariants()
+            aLongPressOpenedVariants = false
+            aPressHandled = true
+        }
     }
 
     private fun onXButton(grid: KeyGridView) {
@@ -700,7 +721,10 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val fastest = (base * 0.55).toLong()
         val delay = if (fromStick) STICK_DELAY_MS[speed] else DPAD_DELAY_MS[speed]
         navRepeater.start(delay, { n -> max(fastest, (base * 0.92.pow(n)).toLong()) }) {
-            gridView?.moveFocus(dx, dy)
+            gridView?.let { grid ->
+                grid.moveFocus(dx, dy)
+                onFocusMovedDuringAPress(grid)
+            }
         }
     }
 

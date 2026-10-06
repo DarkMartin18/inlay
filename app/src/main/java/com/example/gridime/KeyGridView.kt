@@ -22,6 +22,14 @@ import kotlin.math.sin
 
 /** The on-screen keyboard: draws the grid, moves the highlight, reports key presses. */
 class KeyGridView(context: Context) : View(context) {
+    class PressTarget internal constructor(
+        internal val key: Key,
+        internal val label: String,
+        internal val variants: List<String>,
+        internal val row: Int,
+        internal val column: Int,
+        internal val layer: Layer
+    )
 
     interface Listener {
         fun onText(text: String)
@@ -346,36 +354,49 @@ class KeyGridView(context: Context) : View(context) {
             commitVariant(selectedVariant)
             return
         }
-        clampFocus()
-        press(allRows()[selRow][selCol])
+        capturePressTarget()?.let(::press)
     }
 
     val variantsOpen: Boolean get() = openVariants.isNotEmpty()
 
-    fun hasVariantsSelected(): Boolean {
-        if (selRow == 0) return false
+    fun capturePressTarget(): PressTarget? {
+        clampFocus()
         val key = allRows()[selRow][selCol]
-        if (key.type != KeyType.CHAR) return false
-        val variants = when (layer) {
-            Layer.LETTERS -> Layouts.letterVariants(displayLabel(key).single())
+        val label = displayLabel(key)
+        val variants = if (key.type != KeyType.CHAR) emptyList() else when (layer) {
+            Layer.LETTERS -> Layouts.letterVariants(label.single())
             Layer.SYMBOLS -> Layouts.symbolVariants(key.label.single())
             else -> emptyList()
         }
-        return variants.isNotEmpty()
+        return PressTarget(key, label, variants, selRow, selCol, layer)
     }
 
-    fun showVariantsForSelected(): Boolean {
-        if (!hasVariantsSelected()) return false
-        val key = allRows()[selRow][selCol]
-        openVariants = when (layer) {
-            Layer.LETTERS -> Layouts.letterVariants(displayLabel(key).single())
-            Layer.SYMBOLS -> Layouts.symbolVariants(key.label.single())
-            else -> emptyList()
-        }
+    fun hasVariants(target: PressTarget): Boolean = target.variants.isNotEmpty()
+
+    fun isSelected(target: PressTarget): Boolean =
+        selRow == target.row && selCol == target.column && layer == target.layer
+
+    fun showVariants(target: PressTarget): Boolean {
+        if (target.variants.isEmpty()) return false
+        openVariants = target.variants
         selectedVariant = 0
         feedback?.on()
         invalidate()
         return true
+    }
+
+    fun hasVariantsSelected(): Boolean {
+        val target = capturePressTarget() ?: return false
+        return hasVariants(target)
+    }
+
+    fun showVariantsForSelected(): Boolean {
+        val target = capturePressTarget() ?: return false
+        return showVariants(target)
+    }
+
+    fun press(target: PressTarget) {
+        press(target.key, target.label)
     }
 
     fun closeVariants() {
@@ -497,11 +518,11 @@ class KeyGridView(context: Context) : View(context) {
         invalidate()
     }
 
-    private fun press(key: Key) {
+    private fun press(key: Key, label: String = displayLabel(key)) {
         pulse()
         when (key.type) {
             KeyType.CHAR -> {
-                emitCharacter(displayLabel(key))
+                emitCharacter(label)
             }
             KeyType.SPACE -> {
                 feedback?.space()
