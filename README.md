@@ -47,7 +47,7 @@ All of these are real screenshots from my Odin 2 Portal.
 
 ## Features
 
-- **Made for controllers.** D-pad or left stick moves the highlight, with smart repeat when you hold a direction.
+- **Made for controllers.** D-pad or left stick moves the highlight, with independently configurable repeat speeds when you hold a direction.
 - **Every button does something useful.**
   - A types, X deletes (hold it and it speeds up, then deletes whole words), Y is space, Start is enter.
   - Hold A on a letter to open its accented variants; use the D-pad and A to choose, or touch and hold the key. Acute accents appear first on vowels.

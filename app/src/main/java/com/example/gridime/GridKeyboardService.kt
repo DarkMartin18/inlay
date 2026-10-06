@@ -691,10 +691,14 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         if (dx == navDx && dy == navDy && navRepeater.isRunning) return
         navDx = dx
         navDy = dy
-        val speed = settings.stickSpeed.coerceIn(0, STICK_INTERVAL_MS.lastIndex)
-        val base = if (fromStick) STICK_INTERVAL_MS[speed] else DPAD_INTERVAL_MS
+        val speed = if (fromStick) {
+            settings.stickSpeed.coerceIn(0, STICK_INTERVAL_MS.lastIndex)
+        } else {
+            settings.dpadSpeed.coerceIn(0, DPAD_INTERVAL_MS.lastIndex)
+        }
+        val base = if (fromStick) STICK_INTERVAL_MS[speed] else DPAD_INTERVAL_MS[speed]
         val fastest = (base * 0.55).toLong()
-        val delay = if (fromStick) STICK_DELAY_MS[speed] else DPAD_DELAY_MS
+        val delay = if (fromStick) STICK_DELAY_MS[speed] else DPAD_DELAY_MS[speed]
         navRepeater.start(delay, { n -> max(fastest, (base * 0.92.pow(n)).toLong()) }) {
             gridView?.moveFocus(dx, dy)
         }
@@ -711,8 +715,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
         // Navigation timing
-        const val DPAD_DELAY_MS = 350L
-        const val DPAD_INTERVAL_MS = 110L
+        val DPAD_DELAY_MS = longArrayOf(500L, 425L, 350L, 275L, 200L)    // slow ... fast
+        val DPAD_INTERVAL_MS = longArrayOf(180L, 145L, 110L, 85L, 65L)
         val STICK_DELAY_MS = longArrayOf(520L, 460L, 400L, 350L, 300L)      // slow ... fast
         val STICK_INTERVAL_MS = longArrayOf(240L, 190L, 150L, 120L, 95L)
 

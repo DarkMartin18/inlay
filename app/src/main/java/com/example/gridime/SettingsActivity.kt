@@ -386,8 +386,12 @@ class SettingsActivity : Activity() {
 
     private fun controlsPage() = listOf(
         Section("Navigation", listOf(
+            SliderRow(this, "D-pad speed", "How fast the highlight moves while you hold the D-pad",
+                0, 4, settings.dpadSpeed, { SPEED_LABELS[it] }) {
+                update(settings.copy(dpadSpeed = it))
+            },
             SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the stick",
-                0, 4, settings.stickSpeed, { STICK_LABELS[it] }) {
+                0, 4, settings.stickSpeed, { SPEED_LABELS[it] }) {
                 update(settings.copy(stickSpeed = it))
             }
         )),
@@ -550,6 +554,6 @@ class SettingsActivity : Activity() {
         const val CLOSE_DELAY_MS = 140L
         /** The project's web page (e.g. on GitHub). Leave empty to hide the "Source code" row. */
         const val SOURCE_URL = "https://github.com/dakingeman/inlay"
-        val STICK_LABELS = listOf("Slowest", "Slow", "Medium", "Fast", "Fastest")
+        val SPEED_LABELS = listOf("Slowest", "Slow", "Medium", "Fast", "Fastest")
     }
 }

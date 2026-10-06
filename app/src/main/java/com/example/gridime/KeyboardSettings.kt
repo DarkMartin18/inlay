@@ -115,6 +115,7 @@ data class KeyboardSettings(
     val highlightStyle: HighlightStyle = HighlightStyle.GLOW,
     // Controls
     val stickSpeed: Int = 2,            // 0 slow to 4 fast
+    val dpadSpeed: Int = 2,             // 0 slow to 4 fast
     val showHints: Boolean = true,      // badges on keys
     val comboHints: Boolean = true,     // chips while holding RT
     val selectAllButton: Boolean = false,
@@ -153,6 +154,7 @@ data class KeyboardSettings(
             .putString(K_MOTION, motion.name)
             .putString(K_HIGHLIGHT, highlightStyle.name)
             .putInt(K_STICK, stickSpeed)
+            .putInt(K_DPAD, dpadSpeed)
             .putBoolean(K_HINTS, showHints)
             .putBoolean(K_COMBO_HINTS, comboHints)
             .putBoolean(K_SELECT_ALL_BUTTON, selectAllButton)
@@ -188,6 +190,7 @@ data class KeyboardSettings(
         private const val K_SIZE = "size_level"
         private const val K_LAYOUT = "layout"
         private const val K_STICK = "stick_speed"
+        private const val K_DPAD = "dpad_speed"
         private const val K_HINTS = "show_hints"
         private const val K_COMBO_HINTS = "combo_hints"
         private const val K_SELECT_ALL_BUTTON = "select_all_button"
@@ -219,6 +222,7 @@ data class KeyboardSettings(
                 motion = enumOr(p.getString(K_MOTION, null), d.motion),
                 highlightStyle = enumOr(p.getString(K_HIGHLIGHT, null), d.highlightStyle),
                 stickSpeed = p.getInt(K_STICK, d.stickSpeed),
+                dpadSpeed = p.getInt(K_DPAD, d.dpadSpeed),
                 showHints = p.getBoolean(K_HINTS, d.showHints),
                 comboHints = p.getBoolean(K_COMBO_HINTS, d.comboHints),
                 selectAllButton = p.getBoolean(K_SELECT_ALL_BUTTON, d.selectAllButton),
