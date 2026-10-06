@@ -20,17 +20,13 @@ Free, open source, no ads, no tracking, no internet permission.
 
 *A real screen recording from my AYN Odin 2 Portal: typing with the D-pad and A, Y for space, RT for a capital letter and LT for numbers and symbols.*
 
-## Who made this
+## About this fork
 
-I'm Emre, and I don't write code. I want to say that plainly: every line of this app was written by Claude, Anthropic's AI. My part was the idea, deciding how it should look, feel and sound, and testing it on my AYN Odin 2 Portal, over and over, until it felt right. The sounds were made by Claude from scratch too, modelled on button sounds I picked out.
-
-I'm sharing it to give something back to the community. There's no catch and nothing is for sale.
-
-Since I can't read the code myself, I can't promise it's flawless, and it has only been tested on one device. If something goes wrong on yours, please open an issue and tell me what happened. If you can read code, improvements are very welcome.
+This project is based on [Inlay](https://github.com/dakingeman/inlay). The goal of this fork is to keep the original project as its foundation while adding features and changes that I would like to have in it.
 
 ## Screenshots
 
-All of these are real screenshots from my Odin 2 Portal.
+All of these screenshots are from the original project.
 
 | | |
 |---|---|
@@ -51,7 +47,6 @@ All of these are real screenshots from my Odin 2 Portal.
 - **Every button does something useful.**
   - A types, X deletes (hold it and it speeds up, then deletes whole words), Y is space, Start is enter.
   - Hold A on a letter to open its accented variants; use the D-pad and A to choose, or touch and hold the key. Acute accents appear first on vowels.
-  - By default, releasing after a long press types the selected variant. Turn off **Type variant on release** in Controls to leave the menu open and select separately.
   - LB / RB move the cursor. Hold RT with them to jump whole words.
   - RT taps shift; tap twice for caps lock. LT switches to symbols.
   - Select starts selecting text; press it twice to select everything.
@@ -73,8 +68,6 @@ All of these are real screenshots from my Odin 2 Portal.
 | Device | Android | Result |
 |---|---|---|
 | AYN Odin 2 Portal | 13 | Everything tested |
-
-Tried it on something else? Please [tell me how it went](../../issues/new/choose), even if it worked perfectly. That's how this list grows.
 
 ## Install
 
