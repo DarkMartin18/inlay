@@ -12,9 +12,9 @@ Move with the D-pad or stick, press A to type, and never reach for the touchscre
 
 Free, open source, no ads, no tracking, no internet permission.
 
-[![Latest release](https://img.shields.io/github/v/release/dakingeman/inlay?color=72D6E8&labelColor=0B0B0E)](../../releases/latest) [![Licence](https://img.shields.io/github/license/dakingeman/inlay?color=72D6E8&labelColor=0B0B0E)](LICENSE) ![Android 10+](https://img.shields.io/badge/Android-10%2B-72D6E8?labelColor=0B0B0E)
+[![Latest release](https://img.shields.io/github/v/release/darkmartin18/inlay?color=72D6E8&labelColor=0B0B0E)](../../releases/latest) [![Licence](https://img.shields.io/github/license/darkmartin18/inlay?color=72D6E8&labelColor=0B0B0E)](LICENSE) ![Android 10+](https://img.shields.io/badge/Android-10%2B-72D6E8?labelColor=0B0B0E)
 
-**[Download the latest version](../../releases/latest)** · [How to install](#install) · [Report a problem](../../issues/new/choose)
+**[Download the latest version](../../releases/latest)** · [How to install](#install)
 
 ![Typing a sentence with the D-pad and buttons](docs/images/demo.gif)
 
