@@ -351,15 +351,25 @@ class KeyGridView(context: Context) : View(context) {
     val variantsOpen: Boolean get() = openVariants.isNotEmpty()
 
     fun hasVariantsSelected(): Boolean {
-        if (layer != Layer.LETTERS || selRow == 0) return false
+        if (selRow == 0) return false
         val key = allRows()[selRow][selCol]
-        return key.type == KeyType.CHAR && Layouts.letterVariants(displayLabel(key).single()).isNotEmpty()
+        if (key.type != KeyType.CHAR) return false
+        val variants = when (layer) {
+            Layer.LETTERS -> Layouts.letterVariants(displayLabel(key).single())
+            Layer.SYMBOLS -> Layouts.symbolVariants(key.label.single())
+            else -> emptyList()
+        }
+        return variants.isNotEmpty()
     }
 
     fun showVariantsForSelected(): Boolean {
         if (!hasVariantsSelected()) return false
         val key = allRows()[selRow][selCol]
-        openVariants = Layouts.letterVariants(displayLabel(key).single())
+        openVariants = when (layer) {
+            Layer.LETTERS -> Layouts.letterVariants(displayLabel(key).single())
+            Layer.SYMBOLS -> Layouts.symbolVariants(key.label.single())
+            else -> emptyList()
+        }
         selectedVariant = 0
         feedback?.on()
         invalidate()

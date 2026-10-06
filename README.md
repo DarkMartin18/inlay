@@ -54,7 +54,7 @@ All of these are real screenshots from my Odin 2 Portal.
   - LB / RB move the cursor. Hold RT with them to jump whole words.
   - RT taps shift; tap twice for caps lock. LT switches to symbols.
   - Select starts selecting text; press it twice to select everything.
-  - B closes the keyboard without sending Back to the app (the Switch button layout is respected).
+  - B closes the keyboard.
 - **Clipboard history.** Your last few copies, one button away. Passwords marked as sensitive are never kept.
 - **Types straight into the app.** No full-screen typing box covering your game or launcher.
 - **Sound and vibration that feel premium.** Four sound packs (Soft, Soft Deep, Tactile, Chime) and vibration tuned so even small motors are felt.

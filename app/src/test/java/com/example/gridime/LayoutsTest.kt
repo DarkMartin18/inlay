@@ -25,4 +25,11 @@ class LayoutsTest {
         assertEquals("Á", Layouts.letterVariants('A').first())
         assertTrue(Layouts.letterVariants('b').isEmpty())
     }
+
+    @Test
+    fun symbolsIncludeInvertedQuestionAndExclamationMarks() {
+        assertEquals(listOf("¿"), Layouts.symbolVariants('?'))
+        assertEquals(listOf("¡"), Layouts.symbolVariants('!'))
+        assertTrue(Layouts.symbolVariants('=').isEmpty())
+    }
 }

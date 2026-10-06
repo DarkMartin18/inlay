@@ -54,10 +54,17 @@ object Layouts {
         'z' to "źżž"
     )
 
+    private val symbolVariants = mapOf(
+        '?' to "¿",
+        '!' to "¡"
+    )
+
     fun letterVariants(char: Char): List<String> {
         val variants = letterVariants[char.lowercaseChar()] ?: return emptyList()
         return variants.map { if (char.isUpperCase()) it.uppercase() else it.toString() }
     }
+
+    fun symbolVariants(char: Char): List<String> = symbolVariants[char]?.map(Char::toString).orEmpty()
 
     fun toolRow(selectAllButton: Boolean): List<Key> {
         val select = Key(KeyType.TOOL, "Select", if (selectAllButton) 1.7f else 1.9f, Tool.SELECT, ControllerButton.SELECT)
