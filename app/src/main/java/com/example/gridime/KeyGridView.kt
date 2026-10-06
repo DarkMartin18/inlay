@@ -1066,7 +1066,8 @@ class KeyGridView(context: Context) : View(context) {
                             touchY = e.y
                             animateFocus()
                             removeCallbacks(touchLongPress)
-                            postDelayed(touchLongPress, ViewConfiguration.getLongPressTimeout().toLong())
+                            val baseDelay = ViewConfiguration.getLongPressTimeout().toLong()
+                            postDelayed(touchLongPress, settings.variantMenuDelayFrom(baseDelay))
                             return true
                         }
                     }

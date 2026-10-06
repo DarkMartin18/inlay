@@ -55,6 +55,17 @@ enum class KeyShape(val label: String, val radiusDp: Float) {
     ROUND("Round", 14f)
 }
 
+/** Adjusts the hold time relative to the existing default for each input method. */
+enum class VariantMenuDelay(val label: String, private val adjustmentMs: Long) {
+    SLOWEST("Slowest", 300L),
+    SLOW("Slow", 150L),
+    MEDIUM("Medium", 0L),
+    FAST("Fast", -100L),
+    FASTEST("Fastest", -200L);
+
+    fun from(baseMs: Long): Long = (baseMs + adjustmentMs).coerceAtLeast(0L)
+}
+
 /**
  * The physical buttons, named by Android's keycodes.
  * A = bottom face button, B = right, X = left, Y = top (Xbox positions).
@@ -122,6 +133,7 @@ data class KeyboardSettings(
     val doubleSpacePeriod: Boolean = true,
     val undoCombo: Boolean = true,
     val commitVariantOnRelease: Boolean = true,
+    val variantMenuDelay: Int = VariantMenuDelay.MEDIUM.ordinal,
     // Sound & haptics
     val vibration: Boolean = true,
     val moveStrength: Int = 5,          // 0 to 10
@@ -139,6 +151,9 @@ data class KeyboardSettings(
         get() = if (accentIndex < 0) Palette.customAccent(customHue)
         else Palette.accents[accentIndex.coerceIn(0, Palette.accents.lastIndex)].second
     val tone: Tone get() = Palette.tones[toneIndex.coerceIn(0, Palette.tones.lastIndex)]
+
+    fun variantMenuDelayFrom(baseMs: Long): Long =
+        VariantMenuDelay.values()[variantMenuDelay.coerceIn(0, VariantMenuDelay.values().lastIndex)].from(baseMs)
 
     fun save(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -161,6 +176,7 @@ data class KeyboardSettings(
             .putBoolean(K_DOUBLE_SPACE, doubleSpacePeriod)
             .putBoolean(K_UNDO, undoCombo)
             .putBoolean(K_COMMIT_VARIANT_ON_RELEASE, commitVariantOnRelease)
+            .putInt(K_VARIANT_MENU_DELAY, variantMenuDelay)
             .putBoolean(K_VIBRATION, vibration)
             .putInt(K_MOVE, moveStrength)
             .putInt(K_PRESS, pressStrength)
@@ -197,6 +213,7 @@ data class KeyboardSettings(
         private const val K_DOUBLE_SPACE = "double_space_period"
         private const val K_UNDO = "undo_combo"
         private const val K_COMMIT_VARIANT_ON_RELEASE = "commit_variant_on_release"
+        private const val K_VARIANT_MENU_DELAY = "variant_menu_delay"
         private const val K_VIBRATION = "vibration"
         private const val K_MOVE = "move_strength_v7"     // v7: vibration scale changed
         private const val K_PRESS = "press_strength_v7"
@@ -229,6 +246,7 @@ data class KeyboardSettings(
                 doubleSpacePeriod = p.getBoolean(K_DOUBLE_SPACE, d.doubleSpacePeriod),
                 undoCombo = p.getBoolean(K_UNDO, d.undoCombo),
                 commitVariantOnRelease = p.getBoolean(K_COMMIT_VARIANT_ON_RELEASE, d.commitVariantOnRelease),
+                variantMenuDelay = p.getInt(K_VARIANT_MENU_DELAY, d.variantMenuDelay),
                 vibration = p.getBoolean(K_VIBRATION, d.vibration),
                 moveStrength = p.getInt(K_MOVE, d.moveStrength),
                 pressStrength = p.getInt(K_PRESS, d.pressStrength),

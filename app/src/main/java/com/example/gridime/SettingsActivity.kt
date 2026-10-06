@@ -418,6 +418,11 @@ class SettingsActivity : Activity() {
                 settings.commitVariantOnRelease) {
                 update(settings.copy(commitVariantOnRelease = it))
             },
+            SliderRow(this, "Variant menu delay", "How long you hold a character before its variants appear",
+                0, VariantMenuDelay.values().lastIndex, settings.variantMenuDelay,
+                { VariantMenuDelay.values()[it].label }) {
+                update(settings.copy(variantMenuDelay = it))
+            },
             ToggleRow(this, "Undo shortcut", "Hold {R2} and press {X}",
                 settings.undoCombo) {
                 update(settings.copy(undoCombo = it))

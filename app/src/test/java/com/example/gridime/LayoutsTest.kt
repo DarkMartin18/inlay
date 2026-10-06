@@ -11,6 +11,15 @@ class LayoutsTest {
     }
 
     @Test
+    fun variantMenuDelayDefaultsToMediumAndPreservesCurrentTimings() {
+        assertEquals(VariantMenuDelay.MEDIUM.ordinal, KeyboardSettings().variantMenuDelay)
+        assertEquals(500L, VariantMenuDelay.MEDIUM.from(500L))
+        assertEquals(450L, VariantMenuDelay.MEDIUM.from(450L))
+        assertTrue(VariantMenuDelay.SLOWEST.from(500L) > VariantMenuDelay.MEDIUM.from(500L))
+        assertTrue(VariantMenuDelay.FASTEST.from(500L) < VariantMenuDelay.MEDIUM.from(500L))
+    }
+
+    @Test
     fun vowelsShowAcuteAccentFirst() {
         assertEquals("á", Layouts.letterVariants('a').first())
         assertEquals("é", Layouts.letterVariants('e').first())

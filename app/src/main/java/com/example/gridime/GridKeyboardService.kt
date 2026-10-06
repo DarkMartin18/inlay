@@ -573,7 +573,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             grid.pressSelected()
             aPressHandled = true
         } else if (aPressTarget?.let(grid::hasVariants) == true) {
-            handler.postDelayed(aLongPress, LONG_PRESS_MS)
+            handler.postDelayed(aLongPress, settings.variantMenuDelayFrom(LONG_PRESS_MS))
         } else {
             aPressTarget?.let(grid::press)
             aPressHandled = true
