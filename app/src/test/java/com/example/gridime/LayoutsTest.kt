@@ -1,10 +1,25 @@
 package com.example.gridime
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LayoutsTest {
+    @Test
+    fun floatingKeyboardIsOptInAndR3HasAControllerHint() {
+        assertFalse(KeyboardSettings().floatingKeyboard)
+        assertTrue(KeyboardSettings().copy(floatingKeyboard = true).floatingKeyboard)
+        assertTrue(HintText.parse("{R3}").single() is HintPart.Badge)
+    }
+
+    @Test
+    fun floatingKeyboardWidthsScaleAroundTheMediumSize() {
+        assertEquals(1f / 1.2f, floatingKeyboardWidthScale(0), 0.0001f)
+        assertEquals(1f, floatingKeyboardWidthScale(1), 0.0001f)
+        assertEquals(1.4f / 1.2f, floatingKeyboardWidthScale(2), 0.0001f)
+    }
+
     @Test
     fun variantSelectionCommitsOnReleaseByDefault() {
         assertTrue(KeyboardSettings().commitVariantOnRelease)

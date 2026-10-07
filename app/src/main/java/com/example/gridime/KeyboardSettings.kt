@@ -70,7 +70,7 @@ enum class VariantMenuDelay(val label: String, private val adjustmentMs: Long) {
  * The physical buttons, named by Android's keycodes.
  * A = bottom face button, B = right, X = left, Y = top (Xbox positions).
  */
-enum class ControllerButton { A, B, X, Y, L1, R1, L2, R2, SELECT, START, L3 }
+enum class ControllerButton { A, B, X, Y, L1, R1, L2, R2, SELECT, START, L3, R3 }
 
 /** A key colour set: keyboard background, letter keys, special keys. */
 data class Tone(val name: String, val background: Int, val key: Int, val special: Int)
@@ -120,6 +120,7 @@ data class KeyboardSettings(
     val font: FontChoice = FontChoice.HYPERLEGIBLE,
     val letterWeight: Int = 4,          // 0 to 10
     val sizeLevel: Int = 0,             // 0 normal, 1 large, 2 largest
+    val floatingKeyboard: Boolean = false,
     val layout: KeyLayout = KeyLayout.GRID,
     val keyShape: KeyShape = KeyShape.SOFT,
     val motion: HighlightMotion = HighlightMotion.SUBTLE,
@@ -164,6 +165,7 @@ data class KeyboardSettings(
             .putString(K_FONT, font.name)
             .putInt(K_WEIGHT, letterWeight)
             .putInt(K_SIZE, sizeLevel)
+            .putBoolean(K_FLOATING_KEYBOARD, floatingKeyboard)
             .putString(K_LAYOUT, layout.name)
             .putString(K_SHAPE, keyShape.name)
             .putString(K_MOTION, motion.name)
@@ -204,6 +206,7 @@ data class KeyboardSettings(
         private const val K_FONT = "font"
         private const val K_WEIGHT = "letter_weight"
         private const val K_SIZE = "size_level"
+        private const val K_FLOATING_KEYBOARD = "floating_keyboard"
         private const val K_LAYOUT = "layout"
         private const val K_STICK = "stick_speed"
         private const val K_DPAD = "dpad_speed"
@@ -234,6 +237,7 @@ data class KeyboardSettings(
                 font = enumOr(p.getString(K_FONT, null), d.font),
                 letterWeight = p.getInt(K_WEIGHT, d.letterWeight),
                 sizeLevel = p.getInt(K_SIZE, d.sizeLevel),
+                floatingKeyboard = p.getBoolean(K_FLOATING_KEYBOARD, d.floatingKeyboard),
                 layout = enumOr(p.getString(K_LAYOUT, null), d.layout),
                 keyShape = enumOr(p.getString(K_SHAPE, null), d.keyShape),
                 motion = enumOr(p.getString(K_MOTION, null), d.motion),

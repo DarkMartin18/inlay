@@ -3,26 +3,37 @@ package com.example.gridime
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.Rect
+import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.InputDevice
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.inputmethod.EditorInfo
+import android.widget.FrameLayout
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sign
 
 /** The keyboard itself: turns controller input into typing and editing. */
 class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     private var gridView: KeyGridView? = null
+    private var keyboardContainer: KeyboardWindowView? = null
+    private var floatingWindowY: Int? = null
+    private var floatingWindowX: Int? = null
     private val handler = Handler(Looper.getMainLooper())
     private var settings = KeyboardSettings()
     private lateinit var feedback: Feedback
@@ -52,6 +63,29 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private val stick = StickDirection()
     private var hatDx = 0
     private var hatDy = 0
+    private var floatingStickX = 0f
+    private var floatingStickY = 0f
+    private var floatingMovementScheduled = false
+    private var lastFloatingMovementTime = 0L
+    private val floatingMovement = object : Runnable {
+        override fun run() {
+            floatingMovementScheduled = false
+            if (!settings.floatingKeyboard || !isInputViewShown ||
+                (floatingStickX == 0f && floatingStickY == 0f)
+            ) {
+                stopFloatingMovement()
+                return
+            }
+
+            val now = SystemClock.uptimeMillis()
+            val elapsed = ((now - lastFloatingMovementTime).coerceIn(0L, MAX_STICK_FRAME_MS)) / 1000f
+            lastFloatingMovementTime = now
+            val speed = FLOATING_STICK_SPEED_DP * resources.displayMetrics.density * elapsed
+            moveFloatingWindow(floatingStickX * speed, floatingStickY * speed)
+            floatingMovementScheduled = true
+            handler.postDelayed(this, FLOATING_FRAME_MS)
+        }
+    }
 
     // Triggers. L2 = letters/symbols. R2 tap = shift, R2 hold = modifier.
     private var leftTriggerDown = false
@@ -110,15 +144,20 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         super.onDestroy()
     }
 
-    override fun onCreateInputView(): View =
-        KeyGridView(this).also { view ->
-            view.listener = this
-            view.feedback = feedback
-            view.applySettings(settings)
-            view.setClips(history.all)
-            gridView = view
+    override fun onCreateInputView(): View {
+        val view = KeyGridView(this).also {
+            it.listener = this
+            it.feedback = feedback
+            it.applySettings(settings)
+            it.setClips(history.all)
+            gridView = it
             updateClipPreview()
         }
+        return KeyboardWindowView(this, view).also { container ->
+            container.setFloating(settings.floatingKeyboard)
+            keyboardContainer = container
+        }
+    }
 
     /** Keep the keyboard visible even though a gamepad counts as a hardware keyboard. */
     override fun onEvaluateInputViewShown(): Boolean {
@@ -141,10 +180,56 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         setExtractViewShown(false)
     }
 
-    /** 3. Keep the keyboard window only as tall as the keyboard, never the whole screen. */
+    /** Use a keyboard-sized window when docked and a full-screen host for floating placement. */
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, false, isCandidatesOnly)
-        win.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        configureKeyboardWindow(win)
+    }
+
+    private fun configureKeyboardWindow(win: Window) {
+        win.setLayout(
+            if (settings.floatingKeyboard) floatingWindowWidth()
+            else ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        win.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        win.decorView.setBackgroundColor(Color.TRANSPARENT)
+        win.setFormat(if (settings.floatingKeyboard) PixelFormat.TRANSLUCENT else PixelFormat.OPAQUE)
+        val attributes = win.attributes
+        if (settings.floatingKeyboard) {
+            attributes.gravity = Gravity.TOP or Gravity.LEFT
+            attributes.x = (floatingWindowX ?: initialFloatingWindowX()).coerceIn(
+                0,
+                (resources.displayMetrics.widthPixels - floatingWindowWidth()).coerceAtLeast(0)
+            )
+            attributes.y = (floatingWindowY ?: initialFloatingWindowY()).coerceIn(
+                0,
+                (resources.displayMetrics.heightPixels - (keyboardContainer?.keyboardHeight ?: 0)).coerceAtLeast(0)
+            )
+            floatingWindowX = attributes.x
+            floatingWindowY = attributes.y
+        } else {
+            attributes.gravity = Gravity.BOTTOM
+            attributes.x = 0
+            attributes.y = 0
+            floatingWindowX = null
+            floatingWindowY = null
+        }
+        win.attributes = attributes
+    }
+
+    override fun onComputeInsets(outInsets: Insets) {
+        val container = keyboardContainer
+        if (!settings.floatingKeyboard || container == null) {
+            super.onComputeInsets(outInsets)
+            return
+        }
+
+        val windowHeight = getWindow().window?.decorView?.height ?: container.height
+        outInsets.contentTopInsets = windowHeight
+        outInsets.visibleTopInsets = windowHeight
+        outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
+        outInsets.touchableRegion.set(container.keyboardBoundsInWindow())
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -160,6 +245,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             setClips(history.all)
             closeClips(focusOnHistoryButton = false)
         }
+        keyboardContainer?.setFloating(settings.floatingKeyboard)
+        getWindow().window?.let(::configureKeyboardWindow)
         selStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         selEnd = info?.initialSelEnd?.coerceAtLeast(0) ?: 0
         exitSelectMode(collapse = false)
@@ -182,6 +269,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         stopNav()
         deleteRepeater.stop()
         cursorRepeater.stop()
+        stopFloatingMovement()
         stick.reset()
         hatDx = 0
         hatDy = 0
@@ -503,6 +591,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             KeyEvent.KEYCODE_BUTTON_R2 -> if (first) r2Down()
             KeyEvent.KEYCODE_BUTTON_SELECT -> if (first) onSelectButton()
             KeyEvent.KEYCODE_BUTTON_THUMBL -> if (first) cycleSize()
+            KeyEvent.KEYCODE_BUTTON_THUMBR -> if (first) toggleFloatingMode()
             KeyEvent.KEYCODE_BUTTON_START -> if (first) {
                 feedback.confirm()
                 onEnter()
@@ -650,7 +739,85 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         settings = KeyboardSettings.load(this).let { it.copy(sizeLevel = (it.sizeLevel + 1) % 3) }
         settings.save(this)
         gridView?.applySettings(settings)
+        if (settings.floatingKeyboard) {
+            getWindow().window?.let { window ->
+                configureKeyboardWindow(window)
+                window.decorView.apply {
+                    requestLayout()
+                    requestApplyInsets()
+                    post {
+                        if (settings.floatingKeyboard) configureKeyboardWindow(window)
+                    }
+                }
+            }
+        }
         feedback.on()
+    }
+
+    /** R3: switch between the docked and floating keyboard windows. */
+    private fun toggleFloatingMode() {
+        settings = KeyboardSettings.load(this).let { it.copy(floatingKeyboard = !it.floatingKeyboard) }
+        settings.save(this)
+        gridView?.applySettings(settings)
+        keyboardContainer?.setFloating(settings.floatingKeyboard)
+        getWindow().window?.let { window ->
+            configureKeyboardWindow(window)
+            window.decorView.apply {
+                requestLayout()
+                requestApplyInsets()
+            }
+        }
+        if (!settings.floatingKeyboard) {
+            floatingWindowX = null
+            floatingWindowY = null
+            stopFloatingMovement()
+        }
+        feedback.on()
+    }
+
+    private fun initialFloatingWindowY(): Int =
+        (resources.displayMetrics.heightPixels -
+            (keyboardContainer?.keyboardHeight ?: 0) -
+            (FLOATING_BOTTOM_MARGIN_DP * resources.displayMetrics.density).roundToInt())
+            .coerceAtLeast(0)
+
+    private fun floatingWindowWidth(): Int {
+        val metrics = resources.displayMetrics
+        val horizontalMargin = (16f * metrics.density).roundToInt()
+        val portraitWidthLimit = (min(metrics.widthPixels, metrics.heightPixels) - 2 * horizontalMargin)
+            .coerceAtLeast(1)
+        val mediumBaseWidth = min(
+            portraitWidthLimit,
+            ((1000f + 12f) * metrics.density).roundToInt()
+        )
+        val sizeScale = gridView?.floatingWidthScale
+            ?: floatingKeyboardWidthScale(settings.sizeLevel)
+        val availableWidth = (metrics.widthPixels - 2 * horizontalMargin).coerceAtLeast(1)
+        return min(
+            availableWidth,
+            (mediumBaseWidth * sizeScale).roundToInt()
+        )
+    }
+
+    private fun initialFloatingWindowX(): Int =
+        ((resources.displayMetrics.widthPixels - floatingWindowWidth()) / 2).coerceAtLeast(0)
+
+    private fun moveFloatingWindow(dx: Float, dy: Float) {
+        val window = getWindow().window ?: return
+        val attributes = window.attributes
+        val metrics = resources.displayMetrics
+        val currentX = floatingWindowX ?: attributes.x
+        val currentY = floatingWindowY ?: attributes.y
+        val maxX = (metrics.widthPixels - floatingWindowWidth()).coerceAtLeast(0)
+        val maxY = (metrics.heightPixels - (keyboardContainer?.keyboardHeight ?: 0)).coerceAtLeast(0)
+        val nextX = (currentX + dx).roundToInt().coerceIn(0, maxX)
+        val nextY = (currentY + dy).roundToInt().coerceIn(0, maxY)
+        if (nextX == currentX && nextY == currentY) return
+        attributes.x = nextX
+        attributes.y = nextY
+        floatingWindowX = nextX
+        floatingWindowY = nextY
+        window.attributes = attributes
     }
 
     // =====================================================================
@@ -662,10 +829,60 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         if (event.action == MotionEvent.ACTION_MOVE) {
             readTriggers(event)
             readDirections(event)
+            readFloatingPosition(event)
         }
         // Claim every joystick sample. If any slipped through, Android would turn
         // it into its own D-pad presses and the highlight would jump twice.
         return true
+    }
+
+    private fun readFloatingPosition(event: MotionEvent) {
+        if (!settings.floatingKeyboard) {
+            stopFloatingMovement()
+            return
+        }
+        val (axisX, axisY) = rightStickAxes(event.device)
+        floatingStickX = deadZone(event.getAxisValue(axisX))
+        floatingStickY = deadZone(event.getAxisValue(axisY))
+        if (floatingStickX == 0f && floatingStickY == 0f) {
+            stopFloatingMovement()
+            return
+        }
+
+        if (!floatingMovementScheduled) {
+            lastFloatingMovementTime = SystemClock.uptimeMillis()
+            floatingMovementScheduled = true
+            handler.post(floatingMovement)
+        }
+    }
+
+    private fun stopFloatingMovement() {
+        handler.removeCallbacks(floatingMovement)
+        floatingMovementScheduled = false
+        floatingStickX = 0f
+        floatingStickY = 0f
+        lastFloatingMovementTime = 0L
+    }
+
+    private fun rightStickAxes(device: InputDevice?): Pair<Int, Int> {
+        val standardX = MotionEvent.AXIS_Z
+        val standardY = MotionEvent.AXIS_RZ
+        val fallbackX = MotionEvent.AXIS_RX
+        val fallbackY = MotionEvent.AXIS_RY
+        return if (
+            device?.getMotionRange(standardX, InputDevice.SOURCE_JOYSTICK) != null &&
+            device.getMotionRange(standardY, InputDevice.SOURCE_JOYSTICK) != null
+        ) {
+            standardX to standardY
+        } else {
+            fallbackX to fallbackY
+        }
+    }
+
+    private fun deadZone(value: Float): Float {
+        val magnitude = abs(value)
+        if (magnitude <= FLOATING_STICK_DEAD_ZONE) return 0f
+        return sign(value) * ((magnitude - FLOATING_STICK_DEAD_ZONE) / (1f - FLOATING_STICK_DEAD_ZONE))
     }
 
     private fun readTriggers(event: MotionEvent) {
@@ -765,7 +982,85 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val HANDLED_KEYS = setOf(
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_Y,
             KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_SELECT,
-            KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_START
+            KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_THUMBR,
+            KeyEvent.KEYCODE_BUTTON_START
         )
+
+        const val FLOATING_STICK_SPEED_DP = 900f
+        const val FLOATING_STICK_DEAD_ZONE = 0.18f
+        const val FLOATING_FRAME_MS = 16L
+        const val MAX_STICK_FRAME_MS = 50L
+        const val FLOATING_BOTTOM_MARGIN_DP = 32f
+    }
+}
+
+/** IME content with a full-width transparent host and a movable, keyboard-sized child. */
+private class KeyboardWindowView(
+    context: android.content.Context,
+    private val keyboard: KeyGridView
+) : FrameLayout(context) {
+    private val density = resources.displayMetrics.density
+    private var floating = false
+
+    init {
+        setBackgroundColor(Color.TRANSPARENT)
+        clipChildren = false
+        clipToPadding = false
+        addView(keyboard, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    }
+
+    fun setFloating(enabled: Boolean) {
+        if (floating == enabled) return
+        floating = enabled
+        requestLayout()
+    }
+
+    val keyboardHeight: Int get() = keyboard.height
+
+    fun keyboardBoundsInWindow(): Rect {
+        val location = IntArray(2)
+        keyboard.getLocationInWindow(location)
+        return Rect(
+            location[0],
+            location[1],
+            location[0] + keyboard.width,
+            location[1] + keyboard.height
+        )
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        if (!floating) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            return
+        }
+
+        val availableWidth = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+            resources.displayMetrics.widthPixels
+        } else {
+            MeasureSpec.getSize(widthMeasureSpec)
+        }
+        val availableHeight = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+            resources.displayMetrics.heightPixels
+        } else {
+            MeasureSpec.getSize(heightMeasureSpec)
+        }
+        val designMaxWidth = ((1000f + 12f) * density * keyboard.floatingWidthScale).roundToInt()
+        val keyboardWidth = min(availableWidth, designMaxWidth)
+        keyboard.measure(
+            MeasureSpec.makeMeasureSpec(keyboardWidth, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(availableHeight, MeasureSpec.AT_MOST)
+        )
+        setMeasuredDimension(
+            resolveSize(availableWidth, widthMeasureSpec),
+            resolveSize(keyboard.measuredHeight, heightMeasureSpec)
+        )
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        if (!floating) {
+            super.onLayout(changed, left, top, right, bottom)
+            return
+        }
+        keyboard.layout(0, 0, keyboard.measuredWidth, keyboard.measuredHeight)
     }
 }

@@ -9,11 +9,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.dakingeman.inlay"
+        applicationId = "io.github.darkmartin18.inlay"
         minSdk = 29
         targetSdk = 37
         versionCode = 2
-        versionName = "1.1.0"
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

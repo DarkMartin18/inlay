@@ -376,6 +376,10 @@ class SettingsActivity : Activity() {
                 KeyLayout.values().map { it.label }, settings.layout.ordinal) {
                 update(settings.copy(layout = KeyLayout.values()[it]))
             },
+            ChoiceRow(this, "Keyboard mode", "Press {R3} on the keyboard to switch modes",
+                listOf("Fixed", "Floating"), if (settings.floatingKeyboard) 1 else 0) {
+                update(settings.copy(floatingKeyboard = it == 1))
+            },
             ChoiceRow(this, "Keyboard size", "Also on the keyboard: press {L3}",
                 listOf("Normal", "Large", "Largest"), settings.sizeLevel) {
                 update(settings.copy(sizeLevel = it))
@@ -516,6 +520,8 @@ class SettingsActivity : Activity() {
             Section("Editing", editing),
             Section("Keyboard", listOf(
                 GuideRow(this, "Close the keyboard", "{B}"),
+                GuideRow(this, "Switch fixed / floating", "{R3}"),
+                GuideRow(this, "Move floating keyboard", "Right stick"),
                 GuideRow(this, "Change keyboard size", "{L3}")
             ))
         )
@@ -545,7 +551,7 @@ class SettingsActivity : Activity() {
     /** The version number set in the app's build file, so it's only ever written in one place. */
     private fun appVersion(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName
-    }.getOrNull() ?: "1.1.0"
+    }.getOrNull() ?: "1.2.0"
 
     /** Plays sounds one after another with a calm gap, starting after the tap sound. */
     private fun playSequence(cues: List<() -> Unit>) {
@@ -558,7 +564,7 @@ class SettingsActivity : Activity() {
         const val MAX_CONTENT_WIDTH = 720f
         const val CLOSE_DELAY_MS = 140L
         /** The project's web page (e.g. on GitHub). Leave empty to hide the "Source code" row. */
-        const val SOURCE_URL = "https://github.com/dakingeman/inlay"
+        const val SOURCE_URL = "https://github.com/darkmartin18/inlay"
         val SPEED_LABELS = listOf("Slowest", "Slow", "Medium", "Fast", "Fastest")
     }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 — Floating mode
+
+### Added
+- Floating keyboard mode, with a Settings option and an R3 shortcut to switch modes.
+
 ## 1.1.0 — Variant input, D-pad tuning, and keyflow refinements
 
 This release builds on the original 1.0.0 release with a set of controller-focused improvements that make variant input and repeated movement feel smoother and more predictable.

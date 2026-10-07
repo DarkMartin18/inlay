@@ -20,6 +20,13 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
+private val KEYBOARD_SIZE_SCALES = floatArrayOf(1f, 1.2f, 1.4f)
+
+internal fun floatingKeyboardWidthScale(sizeLevel: Int): Float {
+    val level = sizeLevel.coerceIn(0, KEYBOARD_SIZE_SCALES.lastIndex)
+    return KEYBOARD_SIZE_SCALES[level] / KEYBOARD_SIZE_SCALES[1]
+}
+
 /** The on-screen keyboard: draws the grid, moves the highlight, reports key presses. */
 class KeyGridView(context: Context) : View(context) {
     class PressTarget internal constructor(
@@ -46,14 +53,15 @@ class KeyGridView(context: Context) : View(context) {
     // SIZES
     // =====================================================================
     private val dp = resources.displayMetrics.density
-    private val sizeScales = floatArrayOf(1f, 1.2f, 1.4f)
     private var sizeLevel = 0
+    val floatingWidthScale: Float
+        get() = floatingKeyboardWidthScale(sizeLevel)
     /**
      * Shrinks the keyboard on short screens (small 4:3 handhelds, split screen) so it
      * never covers more than [MAX_SCREEN_SHARE] of the height. 1 = no shrinking needed.
      */
     private var fit = 1f
-    private val scale get() = sizeScales[sizeLevel] * fit
+    private val scale get() = KEYBOARD_SIZE_SCALES[sizeLevel] * fit
     private fun u(v: Float) = v * dp * scale          // design units -> pixels at this size
 
     private val toolHeight get() = u(26f)
@@ -61,7 +69,8 @@ class KeyGridView(context: Context) : View(context) {
     private val gap get() = u(Design.SPACE_XS)
     private val edge get() = u(6f)
     private val corner get() = u(settings.keyShape.radiusDp)
-    private val maxWidth = 1000f * dp                  // keys stop stretching on very wide screens
+    private val maxWidth get() = 1000f * dp *
+        if (settings.floatingKeyboard) KEYBOARD_SIZE_SCALES[sizeLevel] else 1f
 
     // =====================================================================
     // APPEARANCE (filled in by applySettings)
@@ -96,7 +105,7 @@ class KeyGridView(context: Context) : View(context) {
         toolRow = Layouts.toolRow(s.selectAllButton)
         letterRows = Layouts.letterRows(s.layout)
         symbolRows = Layouts.symbolRows(s.layout)
-        val level = s.sizeLevel.coerceIn(0, sizeScales.lastIndex)
+        val level = s.sizeLevel.coerceIn(0, KEYBOARD_SIZE_SCALES.lastIndex)
         val sizeChanged = level != sizeLevel
         if (sizeChanged) {
             sizeLevel = level
@@ -113,6 +122,7 @@ class KeyGridView(context: Context) : View(context) {
     // PAINTS AND FONTS
     // =====================================================================
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.LEFT }
@@ -227,6 +237,7 @@ class KeyGridView(context: Context) : View(context) {
     private companion object {
         const val LEAD_AHEAD = 1.3f
         const val LIFT_SCALE = 1.07f
+        const val FLOATING_CORNER_RADIUS_DP = 14f
         /** Height of the keyboard at size 1, in dp (edges, tool strip, four key rows, gaps). */
         const val DESIGN_HEIGHT_DP = 178f
         /** The keyboard never takes more than this share of the screen height. */
@@ -574,9 +585,10 @@ class KeyGridView(context: Context) : View(context) {
     // =====================================================================
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         // Height at the chosen size, before any shrinking: 6+26+4+4×31+3×4+6 = 178 dp
-        val designHeight = DESIGN_HEIGHT_DP * dp * sizeScales[sizeLevel]
+        val designHeight = DESIGN_HEIGHT_DP * dp * KEYBOARD_SIZE_SCALES[sizeLevel]
         val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-        val newFit = min(1f, screenHeight * MAX_SCREEN_SHARE / designHeight)
+        val newFit = if (settings.floatingKeyboard) 1f
+        else min(1f, screenHeight * MAX_SCREEN_SHARE / designHeight)
         if (newFit != fit) {
             fit = newFit
             badges.scale = scale
@@ -613,7 +625,13 @@ class KeyGridView(context: Context) : View(context) {
     // DRAWING
     // =====================================================================
     override fun onDraw(canvas: Canvas) {
-        canvas.drawColor(colBackground)
+        if (settings.floatingKeyboard) {
+            backgroundPaint.color = colBackground
+            val radius = u(FLOATING_CORNER_RADIUS_DP)
+            canvas.drawRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, backgroundPaint)
+        } else {
+            canvas.drawColor(colBackground)
+        }
         clampFocus()
         val rows = allRows()
         if (!focusReady) {

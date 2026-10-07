@@ -54,7 +54,7 @@ All of these screenshots are from the original project.
 - **Clipboard history.** Your last few copies, one button away. Passwords marked as sensitive are never kept.
 - **Types straight into the app.** No full-screen typing box covering your game or launcher.
 - **Sound and vibration that feel premium.** Four sound packs (Soft, Soft Deep, Tactile, Chime) and vibration tuned so even small motors are felt.
-- **Make it yours.** 16 highlight colours plus any custom colour, 8 OLED-friendly key colours, four highlight styles, three key shapes, two layouts, three sizes, and controller icons in Xbox, PlayStation or Switch style.
+- **Make it yours.** 16 highlight colours plus any custom colour, 8 OLED-friendly key colours, four highlight styles, three key shapes, two layouts, fixed or floating keyboard modes, three sizes, and controller icons in Xbox, PlayStation or Switch style.
 - **Fits every screen.** Wide, 4:3, portrait or split screen: the keyboard scales itself so it never covers more than 60 % of the screen.
 - **A Settings app you can use with the controller**, with a live keyboard preview (press Y).
 
