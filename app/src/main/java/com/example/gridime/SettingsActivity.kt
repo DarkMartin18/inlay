@@ -380,6 +380,10 @@ class SettingsActivity : Activity() {
                 listOf("Fixed", "Floating"), if (settings.floatingKeyboard) 1 else 0) {
                 update(settings.copy(floatingKeyboard = it == 1))
             },
+            ToggleRow(this, "Number row", "Show a row of numbers above the letters",
+                settings.showNumberRow) {
+                update(settings.copy(showNumberRow = it))
+            },
             ChoiceRow(this, "Keyboard size", "Also on the keyboard: press {L3}",
                 listOf("Normal", "Large", "Largest"), settings.sizeLevel) {
                 update(settings.copy(sizeLevel = it))
@@ -397,6 +401,10 @@ class SettingsActivity : Activity() {
             SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the stick",
                 0, 4, settings.stickSpeed, { SPEED_LABELS[it] }) {
                 update(settings.copy(stickSpeed = it))
+            },
+            SliderRow(this, "Floating keyboard speed", "How fast the keyboard moves with the right stick in floating mode",
+                0, 4, settings.floatingKeyboardSpeed, { SPEED_LABELS[it] }) {
+                update(settings.copy(floatingKeyboardSpeed = it))
             }
         )),
         Section("Hints", listOf(
@@ -551,7 +559,7 @@ class SettingsActivity : Activity() {
     /** The version number set in the app's build file, so it's only ever written in one place. */
     private fun appVersion(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName
-    }.getOrNull() ?: "1.2.0"
+    }.getOrNull() ?: "1.2.1"
 
     /** Plays sounds one after another with a calm gap, starting after the tap sound. */
     private fun playSequence(cues: List<() -> Unit>) {

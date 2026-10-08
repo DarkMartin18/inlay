@@ -90,19 +90,22 @@ object Layouts {
         }
     }
 
-    fun letterRows(layout: KeyLayout): List<List<Key>> = when (layout) {
-        KeyLayout.GRID -> listOf(
-            chars("qwertyuiop"),
-            chars("asdfghjkl'"),
-            listOf(shift(1f)) + chars("zxcvbnm") + delete(2f),
-            bottomRow("?123", space = 4f, side = 2f)
-        )
-        KeyLayout.CLASSIC -> listOf(
-            chars("qwertyuiop"),
-            chars("asdfghjkl"),
-            listOf(shift(1.5f)) + chars("zxcvbnm") + delete(1.5f),
-            bottomRow("?123", space = 5f, side = 1.5f)
-        )
+    fun letterRows(layout: KeyLayout, showNumberRow: Boolean = false): List<List<Key>> {
+        val rows = when (layout) {
+            KeyLayout.GRID -> listOf(
+                chars("qwertyuiop"),
+                chars("asdfghjkl'"),
+                listOf(shift(1f)) + chars("zxcvbnm") + delete(2f),
+                bottomRow("?123", space = 4f, side = 2f)
+            )
+            KeyLayout.CLASSIC -> listOf(
+                chars("qwertyuiop"),
+                chars("asdfghjkl"),
+                listOf(shift(1.5f)) + chars("zxcvbnm") + delete(1.5f),
+                bottomRow("?123", space = 5f, side = 1.5f)
+            )
+        }
+        return if (showNumberRow) listOf(chars("1234567890")) + rows else rows
     }
 
     fun symbolRows(layout: KeyLayout): List<List<Key>> {
@@ -114,6 +117,27 @@ object Layouts {
             chars("*\"':;!?=") + delete(2f),
             bottomRow("ABC", space, side)
         )
+    }
+
+    fun counterpartLayerRow(sourceLayer: Layer, row: Int, showNumberRow: Boolean): Int {
+        if (!showNumberRow) return row
+        return when (sourceLayer) {
+            Layer.LETTERS -> when (row) {
+                0 -> 0
+                1, 2 -> 1
+                3 -> 2
+                4 -> 3
+                else -> row
+            }
+            Layer.SYMBOLS -> when (row) {
+                0 -> 0
+                1 -> 1
+                2 -> 3
+                3 -> 4
+                else -> row
+            }
+            Layer.CLIPS -> row
+        }
     }
 
     fun clipRows(clips: List<String>): List<List<Key>> {

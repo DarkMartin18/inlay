@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 — Keyboard options and visual fixes
+
+### Added
+- Adjustable right-stick movement speed for the floating keyboard.
+- Option to show a number row above the letters on the main keyboard.
+
+### Improved
+- Fixed a dark strip above the keyboard in fixed mode.
+- The navigation bar now matches the keyboard in fixed mode and stays transparent in floating mode.
+
 ## 1.2.0 — Floating mode
 
 ### Added

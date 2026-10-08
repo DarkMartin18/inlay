@@ -92,7 +92,9 @@ class KeyGridView(context: Context) : View(context) {
     private var symbolRows = Layouts.symbolRows(KeyLayout.GRID)
 
     fun applySettings(s: KeyboardSettings) {
-        val layoutChanged = s.layout != settings.layout || s.selectAllButton != settings.selectAllButton
+        val layoutChanged = s.layout != settings.layout ||
+            s.selectAllButton != settings.selectAllButton ||
+            s.showNumberRow != settings.showNumberRow
         settings = s
         commitVariantOnRelease = s.commitVariantOnRelease
         colBackground = s.tone.background
@@ -103,11 +105,11 @@ class KeyGridView(context: Context) : View(context) {
         colGlow = Contrast.withAlpha(s.accent, 0x59)
         badges.style = s.buttonStyle
         toolRow = Layouts.toolRow(s.selectAllButton)
-        letterRows = Layouts.letterRows(s.layout)
+        letterRows = Layouts.letterRows(s.layout, s.showNumberRow)
         symbolRows = Layouts.symbolRows(s.layout)
         val level = s.sizeLevel.coerceIn(0, KEYBOARD_SIZE_SCALES.lastIndex)
         val sizeChanged = level != sizeLevel
-        if (sizeChanged) {
+        if (sizeChanged || layoutChanged) {
             sizeLevel = level
             requestLayout()
         }
@@ -187,6 +189,8 @@ class KeyGridView(context: Context) : View(context) {
      */
     private var preferredCentre: Float? = null
 
+    private fun keyboardRowCount() = if (settings.showNumberRow) 5 else 4
+
     private fun allRows(): List<List<Key>> = listOf(toolRow) + when (layer) {
         Layer.LETTERS -> letterRows
         Layer.SYMBOLS -> symbolRows
@@ -238,8 +242,6 @@ class KeyGridView(context: Context) : View(context) {
         const val LEAD_AHEAD = 1.3f
         const val LIFT_SCALE = 1.07f
         const val FLOATING_CORNER_RADIUS_DP = 14f
-        /** Height of the keyboard at size 1, in dp (edges, tool strip, four key rows, gaps). */
-        const val DESIGN_HEIGHT_DP = 178f
         /** The keyboard never takes more than this share of the screen height. */
         const val MAX_SCREEN_SHARE = 0.6f
     }
@@ -445,11 +447,16 @@ class KeyGridView(context: Context) : View(context) {
     fun toggleLayer() {
         closeVariants()
         val centre = centreOf(allRows()[selRow], selCol)
-        layer = when (layer) {
+        val sourceLayer = layer
+        layer = when (sourceLayer) {
             Layer.LETTERS -> Layer.SYMBOLS.also { feedback?.on() }
             Layer.SYMBOLS -> Layer.LETTERS.also { feedback?.off() }
             Layer.CLIPS -> Layer.LETTERS.also { feedback?.off() }
         }
+        if (selRow > 0 && sourceLayer != Layer.CLIPS) {
+            selRow = Layouts.counterpartLayerRow(sourceLayer, selRow - 1, settings.showNumberRow) + 1
+        }
+        requestLayout()
         clampFocus()
         selCol = nearestCol(allRows()[selRow], centre)
         preferredCentre = null
@@ -471,6 +478,7 @@ class KeyGridView(context: Context) : View(context) {
     private fun openClips() {
         layerBeforeClips = layer
         layer = Layer.CLIPS
+        requestLayout()
         selRow = 1
         selCol = 0
         preferredCentre = null
@@ -481,6 +489,7 @@ class KeyGridView(context: Context) : View(context) {
     fun closeClips(focusOnHistoryButton: Boolean) {
         if (layer != Layer.CLIPS) return
         layer = layerBeforeClips
+        requestLayout()
         if (focusOnHistoryButton) {
             selRow = 0
             selCol = toolRow.indexOfFirst { it.tool == Tool.HISTORY }
@@ -584,8 +593,9 @@ class KeyGridView(context: Context) : View(context) {
     // SIZE AND POSITIONS
     // =====================================================================
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-        // Height at the chosen size, before any shrinking: 6+26+4+4×31+3×4+6 = 178 dp
-        val designHeight = DESIGN_HEIGHT_DP * dp * KEYBOARD_SIZE_SCALES[sizeLevel]
+        val rowCount = keyboardRowCount()
+        val designHeight = (12f + 26f + Design.SPACE_XS + 31f * rowCount +
+            Design.SPACE_XS * (rowCount - 1)) * dp * KEYBOARD_SIZE_SCALES[sizeLevel]
         val screenHeight = resources.displayMetrics.heightPixels.toFloat()
         val newFit = if (settings.floatingKeyboard) 1f
         else min(1f, screenHeight * MAX_SCREEN_SHARE / designHeight)
@@ -594,7 +604,7 @@ class KeyGridView(context: Context) : View(context) {
             badges.scale = scale
             focusReady = false
         }
-        val h = 2 * edge + toolHeight + gap + 4 * keyHeight + 3 * gap
+        val h = 2 * edge + toolHeight + gap + rowCount * keyHeight + (rowCount - 1) * gap
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), h.roundToInt())
     }
 
@@ -606,10 +616,26 @@ class KeyGridView(context: Context) : View(context) {
     private fun contentWidth() = min(width - 2 * edge, maxWidth)
     private fun contentLeft() = (width - contentWidth()) / 2f
 
-    private fun rowTop(r: Int) =
-        if (r == 0) edge else edge + toolHeight + gap + (r - 1) * (keyHeight + gap)
+    private val expandedSymbolRows get() = layer == Layer.SYMBOLS && settings.showNumberRow
+    private val symbolRowGap get() = if (expandedSymbolRows) gap * 1.5f else gap
+    private val symbolKeyHeight
+        get() = (5 * keyHeight + 4 * gap - 3 * symbolRowGap) / 4f
 
-    private fun rowHeight(r: Int) = if (r == 0) toolHeight else keyHeight
+    private fun rowTop(r: Int): Float {
+        if (r == 0) return edge
+        val firstRowTop = edge + toolHeight + gap
+        return if (expandedSymbolRows) {
+            firstRowTop + (r - 1) * (symbolKeyHeight + symbolRowGap)
+        } else {
+            firstRowTop + (r - 1) * (keyHeight + gap)
+        }
+    }
+
+    private fun rowHeight(r: Int) = when {
+        r == 0 -> toolHeight
+        expandedSymbolRows -> symbolKeyHeight
+        else -> keyHeight
+    }
 
     private fun keyRect(r: Int, row: List<Key>, col: Int): RectF {
         val unit = contentWidth() / Layouts.UNITS

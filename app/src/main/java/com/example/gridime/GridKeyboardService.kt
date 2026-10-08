@@ -80,7 +80,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             val now = SystemClock.uptimeMillis()
             val elapsed = ((now - lastFloatingMovementTime).coerceIn(0L, MAX_STICK_FRAME_MS)) / 1000f
             lastFloatingMovementTime = now
-            val speed = FLOATING_STICK_SPEED_DP * resources.displayMetrics.density * elapsed
+            val speedDp = FLOATING_STICK_SPEED_DP[settings.floatingKeyboardSpeed.coerceIn(0, 4)]
+            val speed = speedDp * resources.displayMetrics.density * elapsed
             moveFloatingWindow(floatingStickX * speed, floatingStickY * speed)
             floatingMovementScheduled = true
             handler.postDelayed(this, FLOATING_FRAME_MS)
@@ -193,8 +194,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
         win.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        win.navigationBarColor =
+            if (settings.floatingKeyboard) Color.TRANSPARENT else settings.tone.background
+        win.isNavigationBarContrastEnforced = false
         win.decorView.setBackgroundColor(Color.TRANSPARENT)
-        win.setFormat(if (settings.floatingKeyboard) PixelFormat.TRANSLUCENT else PixelFormat.OPAQUE)
+        win.setFormat(PixelFormat.TRANSLUCENT)
         val attributes = win.attributes
         if (settings.floatingKeyboard) {
             attributes.gravity = Gravity.TOP or Gravity.LEFT
@@ -204,7 +208,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             )
             attributes.y = (floatingWindowY ?: initialFloatingWindowY()).coerceIn(
                 0,
-                (resources.displayMetrics.heightPixels - (keyboardContainer?.keyboardHeight ?: 0)).coerceAtLeast(0)
+                (resources.displayMetrics.heightPixels - (keyboardContainer?.keyboardHeight ?: 0))
+                    .coerceAtLeast(0)
             )
             floatingWindowX = attributes.x
             floatingWindowY = attributes.y
@@ -986,7 +991,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             KeyEvent.KEYCODE_BUTTON_START
         )
 
-        const val FLOATING_STICK_SPEED_DP = 900f
+        val FLOATING_STICK_SPEED_DP = floatArrayOf(300f, 450f, 600f, 900f, 1200f)
         const val FLOATING_STICK_DEAD_ZONE = 0.18f
         const val FLOATING_FRAME_MS = 16L
         const val MAX_STICK_FRAME_MS = 50L

@@ -1,6 +1,6 @@
 # Inlay — Design Guide
 
-*Version 1.2.0*
+*Version 1.2.1*
 
 The source of truth for how Inlay looks, moves, sounds and feels.
 The numbers live in code in `Design.kt`; this page explains the thinking behind them.

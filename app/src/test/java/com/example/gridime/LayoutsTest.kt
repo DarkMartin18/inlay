@@ -21,6 +21,26 @@ class LayoutsTest {
     }
 
     @Test
+    fun numberRowIsOptionalAndAppearsAboveTheLetters() {
+        assertFalse(KeyboardSettings().showNumberRow)
+        val rows = Layouts.letterRows(KeyLayout.GRID, showNumberRow = true)
+        assertEquals("1234567890", rows.first().joinToString("") { it.label })
+        assertEquals("qwertyuiop", rows[1].joinToString("") { it.label })
+    }
+
+    @Test
+    fun numberRowLayerSwitchKeepsExpectedRows() {
+        assertEquals(0, Layouts.counterpartLayerRow(Layer.LETTERS, 0, true))
+        assertEquals(1, Layouts.counterpartLayerRow(Layer.LETTERS, 1, true))
+        assertEquals(1, Layouts.counterpartLayerRow(Layer.LETTERS, 2, true))
+        assertEquals(2, Layouts.counterpartLayerRow(Layer.LETTERS, 3, true))
+        assertEquals(3, Layouts.counterpartLayerRow(Layer.LETTERS, 4, true))
+        assertEquals(3, Layouts.counterpartLayerRow(Layer.SYMBOLS, 2, true))
+        assertEquals(4, Layouts.counterpartLayerRow(Layer.SYMBOLS, 3, true))
+        assertEquals(3, Layouts.counterpartLayerRow(Layer.LETTERS, 3, false))
+    }
+
+    @Test
     fun variantSelectionCommitsOnReleaseByDefault() {
         assertTrue(KeyboardSettings().commitVariantOnRelease)
     }
